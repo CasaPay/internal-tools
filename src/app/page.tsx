@@ -5,6 +5,7 @@ import Sidebar, { type ToolId } from '@/components/Sidebar';
 import ProspectQualifier from '@/components/tools/ProspectQualifier';
 import SalesTargetCalculator from '@/components/tools/SalesTargetCalculator';
 import UnitEconomics from '@/components/tools/UnitEconomics';
+import TrainingSimulator from '@/components/tools/TrainingSimulator';
 
 const PASS = 'CP2143@';
 const STORAGE_KEY = 'cp-auth';
@@ -71,6 +72,7 @@ export default function Home() {
         {currentTool === 'prospect' && <ProspectQualifier />}
         {currentTool === 'calculator' && <SalesTargetCalculator />}
         {currentTool === 'unit-economics' && <UnitEconomics />}
+        {currentTool === 'training' && <TrainingSimulator />}
       </main>
     </div>
   );
