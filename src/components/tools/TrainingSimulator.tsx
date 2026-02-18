@@ -240,6 +240,14 @@ export default function TrainingSimulator() {
   const conversationRef = useRef<Conversation | null>(null);
   const conversationIdRef = useRef<string>('');
   const transcriptRef = useRef<TranscriptLine[]>([]);
+  const callSecondsRef = useRef(0);
+  const selectedPersonaRef = useRef<PersonaId | null>(null);
+  const selectedStageRef = useRef<StageId | null>(null);
+  const finishingRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
+  useEffect(() => { selectedStageRef.current = selectedStage; }, [selectedStage]);
 
   // Persist sessions
   useEffect(() => {
@@ -249,10 +257,72 @@ export default function TrainingSimulator() {
   // Call timer
   useEffect(() => {
     if (callActive) {
-      timerRef.current = setInterval(() => setCallSeconds((s) => s + 1), 1000);
+      callSecondsRef.current = 0;
+      timerRef.current = setInterval(() => {
+        callSecondsRef.current += 1;
+        setCallSeconds(callSecondsRef.current);
+      }, 1000);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [callActive]);
+
+  const finishCall = useCallback(async () => {
+    // Prevent double-finish
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+
+    setCallActive(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    const conv = conversationRef.current;
+    conversationRef.current = null;
+
+    if (conv) {
+      try { await conv.endSession(); } catch { /* already ended */ }
+    }
+
+    // Fetch conversation details from ElevenLabs API for analysis
+    const convId = conversationIdRef.current;
+    let analysisScores: ScoreEntry[] | null = null;
+
+    if (convId) {
+      try {
+        await new Promise((r) => setTimeout(r, 2000));
+        const res = await fetch(`/api/elevenlabs/conversation?id=${convId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.analysis) {
+            analysisScores = parseAnalysis(data.analysis);
+          }
+        }
+      } catch { /* analysis fetch failed, use fallback */ }
+    }
+
+    // Build scorecard from transcript analysis
+    const transcript = transcriptRef.current;
+    const scores = analysisScores && analysisScores.length > 0
+      ? analysisScores
+      : scoreFromTranscript(transcript);
+    const overall = scores.length > 0
+      ? Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length)
+      : 0;
+
+    const session: Session = {
+      id: crypto.randomUUID(),
+      conversationId: convId,
+      persona: selectedPersonaRef.current!,
+      stage: selectedStageRef.current!,
+      date: new Date().toISOString(),
+      duration: callSecondsRef.current,
+      scores,
+      overallScore: overall,
+      transcript,
+    };
+
+    setSessions((prev) => [session, ...prev]);
+    setView('scorecard');
+    finishingRef.current = false;
+  }, []);
 
   const startCall = useCallback(async () => {
     if (!selectedPersona || !selectedStage) return;
@@ -262,8 +332,10 @@ export default function TrainingSimulator() {
     setConnecting(true);
     setError(null);
     setCallSeconds(0);
+    callSecondsRef.current = 0;
     setLiveTranscript([]);
     transcriptRef.current = [];
+    finishingRef.current = false;
 
     try {
       // Request mic permission
@@ -271,13 +343,17 @@ export default function TrainingSimulator() {
 
       // Get signed URL from our API route
       const urlRes = await fetch(`/api/elevenlabs/signed-url?agentId=${persona.agentId}`);
-      if (!urlRes.ok) throw new Error(`Failed to get signed URL: ${urlRes.status}`);
-      const { signed_url } = await urlRes.json();
-      if (!signed_url) throw new Error('No signed URL returned');
+      if (!urlRes.ok) {
+        const errText = await urlRes.text();
+        throw new Error(`Signed URL failed (${urlRes.status}): ${errText}`);
+      }
+      const urlData = await urlRes.json();
+      const signedUrl = urlData.signed_url;
+      if (!signedUrl) throw new Error(`No signed_url in response: ${JSON.stringify(urlData)}`);
 
       // Start ElevenLabs conversation
       const conversation = await Conversation.startSession({
-        signedUrl: signed_url,
+        signedUrl: signedUrl,
         overrides: {
           agent: {
             prompt: {
@@ -298,12 +374,12 @@ export default function TrainingSimulator() {
         onModeChange: ({ mode: m }) => {
           setMode(m);
         },
-        onError: (message) => {
-          console.error('ElevenLabs error:', message);
-          setError(message);
+        onError: (message, context) => {
+          console.error('ElevenLabs error:', message, context);
+          setError(typeof message === 'string' ? message : JSON.stringify(message));
         },
-        onDisconnect: () => {
-          // Agent ended the conversation
+        onDisconnect: (details) => {
+          console.log('ElevenLabs disconnect:', details);
           if (conversationRef.current) {
             finishCall();
           }
@@ -312,62 +388,12 @@ export default function TrainingSimulator() {
 
       conversationRef.current = conversation;
     } catch (err: any) {
+      console.error('startCall error:', err);
       setConnecting(false);
       setError(err.message || 'Failed to connect');
       setView('setup');
     }
-  }, [selectedPersona, selectedStage]);
-
-  const finishCall = useCallback(async () => {
-    setCallActive(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-
-    const conv = conversationRef.current;
-    conversationRef.current = null;
-
-    if (conv) {
-      try { await conv.endSession(); } catch { /* already ended */ }
-    }
-
-    // Fetch conversation details from ElevenLabs API for analysis
-    const convId = conversationIdRef.current;
-    let analysisScores: ScoreEntry[] | null = null;
-
-    if (convId) {
-      try {
-        // Small delay to let ElevenLabs process the conversation
-        await new Promise((r) => setTimeout(r, 2000));
-        const res = await fetch(`/api/elevenlabs/conversation?id=${convId}`);
-        if (res.ok) {
-          const data = await res.json();
-          // If ElevenLabs returns analysis data, use it
-          if (data.analysis) {
-            analysisScores = parseAnalysis(data.analysis);
-          }
-        }
-      } catch { /* analysis fetch failed, use fallback */ }
-    }
-
-    // Build scorecard from transcript analysis
-    const transcript = transcriptRef.current;
-    const scores = analysisScores || scoreFromTranscript(transcript);
-    const overall = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
-
-    const session: Session = {
-      id: crypto.randomUUID(),
-      conversationId: convId,
-      persona: selectedPersona!,
-      stage: selectedStage!,
-      date: new Date().toISOString(),
-      duration: callSeconds,
-      scores,
-      overallScore: overall,
-      transcript,
-    };
-
-    setSessions((prev) => [session, ...prev]);
-    setView('scorecard');
-  }, [selectedPersona, selectedStage, callSeconds]);
+  }, [selectedPersona, selectedStage, finishCall]);
 
   const endCall = useCallback(() => {
     finishCall();
