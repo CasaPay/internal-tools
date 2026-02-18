@@ -437,25 +437,25 @@ function ScriptPanel({ stageId }: { stageId: StageId }) {
   const toggle = (i: number) => setCollapsed((prev) => ({ ...prev, [i]: !prev[i] }));
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar space-y-4 p-6">
-      <div className="flex items-center gap-2 mb-3">
-        <BookOpen size={18} className="text-emerald-400" />
-        <span className="text-base font-black text-emerald-400 uppercase tracking-widest">Script</span>
+    <div className="h-full overflow-y-auto custom-scrollbar space-y-5 p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <BookOpen size={22} className="text-emerald-400" />
+        <span className="text-lg font-black text-emerald-400 uppercase tracking-widest">Script</span>
       </div>
       {cards.map((card, i) => (
         <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
           <button
             onClick={() => toggle(i)}
-            className="w-full text-left px-5 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+            className="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
           >
-            <span className="text-base font-bold text-slate-200">{card.title}</span>
-            <ChevronRight size={16} className={`text-slate-600 transition-transform ${collapsed[i] ? '' : 'rotate-90'}`} />
+            <span className="text-lg font-bold text-slate-100">{card.title}</span>
+            <ChevronRight size={18} className={`text-slate-600 transition-transform ${collapsed[i] ? '' : 'rotate-90'}`} />
           </button>
           {!collapsed[i] && (
-            <div className="px-5 pb-4 space-y-2.5">
+            <div className="px-5 pb-5 space-y-3">
               {card.tips.map((tip, j) => (
-                <div key={j} className="flex gap-2.5 text-[15px] leading-relaxed text-slate-300">
-                  <span className="text-emerald-500/60 mt-0.5 shrink-0">•</span>
+                <div key={j} className="flex gap-3 text-base leading-relaxed text-slate-300">
+                  <span className="text-emerald-500/60 mt-1 shrink-0">•</span>
                   <span>{tip}</span>
                 </div>
               ))}
