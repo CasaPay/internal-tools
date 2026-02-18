@@ -469,9 +469,6 @@ export default function TrainingSimulator() {
         overrides: {
           agent: {
             firstMessage: getFirstMessage(persona, selectedStage),
-            prompt: {
-              prompt: STAGE_CONTEXT[selectedStage],
-            },
           },
         },
         onConnect: ({ conversationId }) => {
