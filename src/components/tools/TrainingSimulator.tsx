@@ -127,7 +127,7 @@ const STAGE_CONTEXT: Record<StageId, string> = {
 
 // ── Ring Tone (Web Audio API) ────────────────────────────────────────────────
 
-function createRingTone(): { start: () => void; stop: () => void } {
+function createRingTone(): { start: () => void; stop: () => Promise<void> } {
   let ctx: AudioContext | null = null;
   let gainNode: GainNode | null = null;
   let osc1: OscillatorNode | null = null;
@@ -168,13 +168,15 @@ function createRingTone(): { start: () => void; stop: () => void } {
       ring();
       intervalId = setInterval(ring, 3000);
     },
-    stop() {
+    async stop() {
       stopped = true;
       if (intervalId) clearInterval(intervalId);
       try { osc1?.stop(); } catch {}
       try { osc2?.stop(); } catch {}
-      try { ctx?.close(); } catch {}
-      ctx = null;
+      if (ctx) {
+        try { await ctx.close(); } catch {}
+        ctx = null;
+      }
     },
   };
 }
@@ -320,7 +322,7 @@ export default function TrainingSimulator() {
   const selectedPersonaRef = useRef<PersonaId | null>(null);
   const selectedStageRef = useRef<StageId | null>(null);
   const finishingRef = useRef(false);
-  const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const ringToneRef = useRef<{ start: () => void; stop: () => Promise<void> } | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
@@ -432,10 +434,16 @@ export default function TrainingSimulator() {
       const signedUrl = urlData.signed_url;
       if (!signedUrl) throw new Error(`No signed_url in response: ${JSON.stringify(urlData)}`);
 
-      // Play ringing tone while connecting
+      // Play ringing tone while waiting to connect
       const ringTone = createRingTone();
       ringToneRef.current = ringTone;
       ringTone.start();
+
+      // Wait a beat so the user hears at least one ring cycle, then stop
+      // the tone and release the AudioContext before ElevenLabs takes over audio
+      await new Promise((r) => setTimeout(r, 3200));
+      await ringTone.stop();
+      ringToneRef.current = null;
 
       // Start ElevenLabs conversation
       const conversation = await Conversation.startSession({
@@ -449,9 +457,6 @@ export default function TrainingSimulator() {
           },
         },
         onConnect: ({ conversationId }) => {
-          // Stop ringing — AI is "picking up"
-          ringToneRef.current?.stop();
-          ringToneRef.current = null;
           conversationIdRef.current = conversationId;
           setConnecting(false);
           setCallActive(true);
