@@ -462,6 +462,8 @@ export default function TrainingSimulator() {
       ringTone.start();
 
       // Start ElevenLabs conversation (ring plays concurrently)
+      console.log('[TrainingSim] Starting session with signedUrl:', signedUrl.slice(0, 60) + '...');
+      console.log('[TrainingSim] firstMessage:', getFirstMessage(persona, selectedStage));
       const conversation = await Conversation.startSession({
         signedUrl: signedUrl,
         overrides: {
@@ -473,6 +475,7 @@ export default function TrainingSimulator() {
           },
         },
         onConnect: ({ conversationId }) => {
+          console.log('[TrainingSim] onConnect, conversationId:', conversationId);
           // Stop ringing — AI is "picking up"
           ringToneRef.current?.stop();
           ringToneRef.current = null;
@@ -481,25 +484,31 @@ export default function TrainingSimulator() {
           setCallActive(true);
         },
         onMessage: ({ message, source }) => {
+          console.log('[TrainingSim] onMessage:', source, message.slice(0, 80));
           const line: TranscriptLine = { role: source, message };
           transcriptRef.current = [...transcriptRef.current, line];
           setLiveTranscript([...transcriptRef.current]);
         },
         onModeChange: ({ mode: m }) => {
+          console.log('[TrainingSim] onModeChange:', m);
           setMode(m);
         },
+        onStatusChange: ({ status }) => {
+          console.log('[TrainingSim] onStatusChange:', status);
+        },
         onError: (message, context) => {
-          console.error('ElevenLabs error:', message, context);
+          console.error('[TrainingSim] onError:', message, context);
           setError(typeof message === 'string' ? message : JSON.stringify(message));
         },
         onDisconnect: (details) => {
-          console.log('ElevenLabs disconnect:', details);
+          console.log('[TrainingSim] onDisconnect:', JSON.stringify(details));
           if (conversationRef.current) {
             finishCall();
           }
         },
       });
 
+      console.log('[TrainingSim] startSession resolved, conversation:', conversation?.getId?.());
       conversationRef.current = conversation;
     } catch (err: any) {
       console.error('startCall error:', err);
