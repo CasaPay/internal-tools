@@ -125,57 +125,79 @@ const STAGE_CONTEXT: Record<StageId, string> = {
   'offer-close': 'The sales rep is discussing pricing and trying to close. Push back on pricing, ask about discounts, compare to alternatives. Only agree to next steps if they make a compelling case with specific numbers.',
 };
 
-// ── Ring Tone (Web Audio API) ────────────────────────────────────────────────
+// ── Ring Tone (inline data URI — no external file needed) ────────────────────
 
-function createRingTone(): { start: () => void; stop: () => Promise<void> } {
-  let ctx: AudioContext | null = null;
-  let gainNode: GainNode | null = null;
-  let osc1: OscillatorNode | null = null;
-  let osc2: OscillatorNode | null = null;
-  let intervalId: ReturnType<typeof setInterval> | null = null;
-  let stopped = false;
+// Generate a UK-style ring tone as a WAV data URI at module load time.
+// Two bursts of 400+450Hz, ~0.4s each, with 0.2s gap, then silence.
+function generateRingToneDataUri(): string {
+  const sampleRate = 16000;
+  const duration = 3; // 3 seconds: ring-ring then silence
+  const numSamples = sampleRate * duration;
+  const buffer = new Int16Array(numSamples);
 
-  function ring() {
-    if (!ctx || stopped) return;
-    // UK-style ring: 400Hz + 450Hz dual tone, 0.4s on, 0.2s off, 0.4s on, 2s off
-    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime);
-    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime + 0.4);
-    gainNode!.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.42);
-    gainNode!.gain.setValueAtTime(0, ctx.currentTime + 0.6);
-    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime + 0.62);
-    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime + 1.0);
-    gainNode!.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.02);
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    // Burst 1: 0.0–0.4s, Burst 2: 0.6–1.0s, silence rest
+    const inBurst = (t >= 0 && t < 0.4) || (t >= 0.6 && t < 1.0);
+    if (inBurst) {
+      const sample = Math.sin(2 * Math.PI * 400 * t) + Math.sin(2 * Math.PI * 450 * t);
+      buffer[i] = Math.round(sample * 0.15 * 32767);
+    } else {
+      buffer[i] = 0;
+    }
   }
+
+  // Minimal WAV header
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  const dataSize = buffer.length * 2;
+  const fileSize = 36 + dataSize;
+  // RIFF header
+  view.setUint32(0, 0x52494646, false); // "RIFF"
+  view.setUint32(4, fileSize, true);
+  view.setUint32(8, 0x57415645, false); // "WAVE"
+  // fmt chunk
+  view.setUint32(12, 0x666d7420, false); // "fmt "
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  // data chunk
+  view.setUint32(36, 0x64617461, false); // "data"
+  view.setUint32(40, dataSize, true);
+
+  const wav = new Uint8Array(44 + dataSize);
+  wav.set(new Uint8Array(header), 0);
+  wav.set(new Uint8Array(buffer.buffer), 44);
+
+  const binary = Array.from(wav).map((b) => String.fromCharCode(b)).join('');
+  return 'data:audio/wav;base64,' + btoa(binary);
+}
+
+let _ringDataUri: string | null = null;
+function getRingDataUri() {
+  if (!_ringDataUri) _ringDataUri = generateRingToneDataUri();
+  return _ringDataUri;
+}
+
+function createRingTone(): { start: () => void; stop: () => void } {
+  let audio: HTMLAudioElement | null = null;
 
   return {
     start() {
-      stopped = false;
-      ctx = new AudioContext();
-      gainNode = ctx.createGain();
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.connect(ctx.destination);
-
-      osc1 = ctx.createOscillator();
-      osc1.frequency.setValueAtTime(400, ctx.currentTime);
-      osc1.connect(gainNode);
-      osc1.start();
-
-      osc2 = ctx.createOscillator();
-      osc2.frequency.setValueAtTime(450, ctx.currentTime);
-      osc2.connect(gainNode);
-      osc2.start();
-
-      ring();
-      intervalId = setInterval(ring, 3000);
+      audio = new Audio(getRingDataUri());
+      audio.loop = true;
+      audio.volume = 0.4;
+      audio.play().catch(() => {});
     },
-    async stop() {
-      stopped = true;
-      if (intervalId) clearInterval(intervalId);
-      try { osc1?.stop(); } catch {}
-      try { osc2?.stop(); } catch {}
-      if (ctx) {
-        try { await ctx.close(); } catch {}
-        ctx = null;
+    stop() {
+      if (audio) {
+        audio.pause();
+        audio.src = '';
+        audio = null;
       }
     },
   };
@@ -322,7 +344,7 @@ export default function TrainingSimulator() {
   const selectedPersonaRef = useRef<PersonaId | null>(null);
   const selectedStageRef = useRef<StageId | null>(null);
   const finishingRef = useRef(false);
-  const ringToneRef = useRef<{ start: () => void; stop: () => Promise<void> } | null>(null);
+  const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
@@ -434,18 +456,12 @@ export default function TrainingSimulator() {
       const signedUrl = urlData.signed_url;
       if (!signedUrl) throw new Error(`No signed_url in response: ${JSON.stringify(urlData)}`);
 
-      // Play ringing tone while waiting to connect
+      // Play ringing tone via <audio> element (doesn't interfere with ElevenLabs AudioContext)
       const ringTone = createRingTone();
       ringToneRef.current = ringTone;
       ringTone.start();
 
-      // Wait a beat so the user hears at least one ring cycle, then stop
-      // the tone and release the AudioContext before ElevenLabs takes over audio
-      await new Promise((r) => setTimeout(r, 3200));
-      await ringTone.stop();
-      ringToneRef.current = null;
-
-      // Start ElevenLabs conversation
+      // Start ElevenLabs conversation (ring plays concurrently)
       const conversation = await Conversation.startSession({
         signedUrl: signedUrl,
         overrides: {
@@ -457,6 +473,9 @@ export default function TrainingSimulator() {
           },
         },
         onConnect: ({ conversationId }) => {
+          // Stop ringing — AI is "picking up"
+          ringToneRef.current?.stop();
+          ringToneRef.current = null;
           conversationIdRef.current = conversationId;
           setConnecting(false);
           setCallActive(true);
