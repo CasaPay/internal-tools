@@ -13,6 +13,7 @@ type View = 'setup' | 'call' | 'scorecard' | 'history';
 interface Persona {
   id: PersonaId;
   name: string;
+  characterName: string;
   segment: string;
   description: string;
   color: string;
@@ -56,6 +57,7 @@ const PERSONAS: Persona[] = [
   {
     id: 'pbsa',
     name: 'The Skeptical PBSA Manager',
+    characterName: 'James',
     segment: 'PBSA',
     description: '500+ beds, cautious, needs proof. Raises "early-stage product" and "will students adopt it?" objections.',
     color: 'emerald',
@@ -64,6 +66,7 @@ const PERSONAS: Persona[] = [
   {
     id: 'hmo',
     name: 'The Overwhelmed HMO Operator',
+    characterName: 'Dave',
     segment: 'HMO',
     description: 'Drowning in admin, time-poor. Raises "need full PMS integration" and "no time for onboarding" objections.',
     color: 'blue',
@@ -72,6 +75,7 @@ const PERSONAS: Persona[] = [
   {
     id: 'btr',
     name: 'The Tech-Savvy BTR Director',
+    characterName: 'Sarah',
     segment: 'BTR',
     description: 'Technically literate, asks about APIs, data security, GDPR, reporting. Detailed questions.',
     color: 'violet',
@@ -80,12 +84,30 @@ const PERSONAS: Persona[] = [
   {
     id: 'coliving',
     name: 'The Price-Conscious Co-Living Founder',
+    characterName: 'Emma',
     segment: 'Co-Living',
     description: 'Compares everything on price. Raises "too expensive vs PayProp/GoCardless" and "we already have Stripe" objections.',
     color: 'amber',
     agentId: 'agent_6101khqysrptfwmtp272ne3g9zf0',
   },
 ];
+
+// First message the AI says when "picking up the phone" — varies by stage
+function getFirstMessage(persona: Persona, stage: StageId): string {
+  const name = persona.characterName;
+  switch (stage) {
+    case 'cold-intro':
+      return `Hello, ${name} speaking.`;
+    case 'discovery':
+      return `Hi, ${name} here. Thanks for calling — I've got about fifteen minutes, so let's get into it.`;
+    case 'demo-pitch':
+      return `Hi there, ${name} speaking. I believe we had this call booked in for a product walkthrough? Go ahead.`;
+    case 'objection-handling':
+      return `Hi, ${name} here. So look, I've had a chance to think about what we discussed last time, and I've got some questions before we go any further.`;
+    case 'offer-close':
+      return `Hi, ${name} speaking. Right, so I understand you're sending over a proposal. Before we go through numbers, tell me what you're thinking.`;
+  }
+}
 
 const STAGES: Stage[] = [
   { id: 'cold-intro', name: 'Cold Intro', duration: '~2 min', description: 'Hook + value prop in 30 seconds, get the meeting' },
@@ -356,6 +378,7 @@ export default function TrainingSimulator() {
         signedUrl: signedUrl,
         overrides: {
           agent: {
+            firstMessage: getFirstMessage(persona, selectedStage),
             prompt: {
               prompt: STAGE_CONTEXT[selectedStage],
             },
