@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Conversation } from '@11labs/client';
-import { Phone, PhoneOff, Play, ChevronRight, RotateCcw, User, MessageSquare, History, Loader2, MicOff, Mic } from 'lucide-react';
+import { Phone, PhoneOff, Play, ChevronRight, RotateCcw, User, MessageSquare, History, Loader2, MicOff, Mic, BookOpen, Trophy } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type PersonaId = 'pbsa' | 'hmo' | 'btr' | 'coliving';
 type StageId = 'cold-intro' | 'discovery' | 'demo-pitch' | 'objection-handling' | 'offer-close';
+type CallMode = 'training' | 'exam';
 type View = 'setup' | 'call' | 'scorecard' | 'history';
 
 interface Persona {
@@ -44,6 +45,7 @@ interface Session {
   conversationId: string;
   persona: PersonaId;
   stage: StageId;
+  mode: CallMode;
   date: string;
   duration: number;
   scores: ScoreEntry[];
@@ -123,6 +125,119 @@ const STAGE_CONTEXT: Record<StageId, string> = {
   'demo-pitch': 'The sales rep is giving a verbal product demo. They should explain the CasaPay product clearly — Chrome extension, AI invoicing gateway, pricing tiers, guarantee product. Ask clarifying questions and test their product knowledge.',
   'objection-handling': 'Raise your objections early and firmly. The sales rep needs to handle them convincingly. If they give a weak response, push back harder. If they give a strong, specific response, acknowledge it but raise another objection.',
   'offer-close': 'The sales rep is discussing pricing and trying to close. Push back on pricing, ask about discounts, compare to alternatives. Only agree to next steps if they make a compelling case with specific numbers.',
+};
+
+// ── Script Data (Training Mode) ──────────────────────────────────────────────
+
+interface ScriptCard {
+  title: string;
+  tips: string[];
+}
+
+const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
+  'cold-intro': [
+    { title: 'Opening Hook', tips: [
+      'Introduce yourself: name + CasaPay',
+      'Reference their segment pain: "As a [PBSA/HMO/...] operator, the Renters Rights Act changes from May 1st..."',
+      'Value prop in 1 sentence: "We provide guaranteed rent on time — you send an invoice, we pay on the due date, even if the tenant is late."',
+      'Ask for 30 seconds: "Would you have 30 seconds for me to explain how?"',
+    ]},
+    { title: 'If They Engage', tips: [
+      'Qualify quickly: "How many beds/units do you manage?"',
+      'Bridge to meeting: "I think this is worth 15 minutes — can I send a calendar link?"',
+      'Use booking link, don\'t propose times manually',
+    ]},
+    { title: 'If They Push Back', tips: [
+      'Acknowledge: "I understand, you\'re busy"',
+      'Leave a hook: "Just so you know — operators like yours typically save £1,000/month by consolidating 3-5 vendors into one"',
+      'Offer email: "Can I send a one-pager instead?"',
+    ]},
+  ],
+  'discovery': [
+    { title: 'Qualifying Questions (ask 4-5)', tips: [
+      '"How many beds/units do you operate?"',
+      '"How are you currently handling deposits? What\'s the compliance overhead?"',
+      '"What % of your tenants are international students?"',
+      '"What PMS system are you using?"',
+      '"Who handles payment collection today — Stripe, GoCardless, bank transfers?"',
+      '"When would you want to implement — before September intake?"',
+      '"Are you the right person to decide, or should we loop in operations/finance?"',
+    ]},
+    { title: 'Pain Points to Listen For', tips: [
+      'Deposit admin overhead → lead with deposit elimination',
+      'Multiple vendors → lead with all-in-one savings',
+      'Late payment cash flow gaps → lead with ON-TIME tier',
+      'No tech integration → lead with email alias (zero integration)',
+      'International tenants → lead with FX + credit building',
+    ]},
+    { title: 'Key Rule', tips: [
+      'Listen more than you talk (40-60% ratio)',
+      'Don\'t pitch yet — understand their situation first',
+      'Take notes on what they say — reference it later',
+    ]},
+  ],
+  'demo-pitch': [
+    { title: 'Demo Flow (7 steps)', tips: [
+      '1. [2 min] Confirm pain points from discovery',
+      '2. [3 min] CasaPay overview + match to right tier',
+      '3. [5 min] Explain AI gateway: operator sends invoice to @alias → AI parses → tenant pays → operator gets payout',
+      '4. [3 min] Chrome extension: works with ANY PMS, no integration needed',
+      '5. [3 min] Savings calculator: typical 500-unit operator saves ~£1,000/month',
+      '6. [2 min] Q&A',
+      '7. [2 min] Next steps — send offer or schedule follow-up',
+    ]},
+    { title: 'Product Tiers', tips: [
+      'PAYMENTS (1.0%) — collection + screening',
+      'COVER (1.5%) — + guarantee + deposit elimination',
+      'ON-TIME (2.5%) — guaranteed payout on due date',
+      'ENTERPRISE (custom) — 500+ units, dedicated AM',
+    ]},
+    { title: 'Proof Points', tips: [
+      '36 live operators across EU + UK',
+      '220+ tenants actively using',
+      'Fastest deal close: 16 days (Aria Apartments)',
+      'Chrome plugin = works with any PMS, no IT needed',
+    ]},
+  ],
+  'objection-handling': [
+    { title: '"You\'re early-stage"', tips: [
+      '"We have 36 live operators, 220+ tenants, EU + UK case studies. Battle-tested across multiple markets."',
+      'Mention specific proof: Aria Apartments closed in 16 days',
+    ]},
+    { title: '"Will students adopt it?"', tips: [
+      '"International students especially value FX handling, credit building, and no deposits. Strong adoption data across Europe."',
+    ]},
+    { title: '"Need full PMS integration"', tips: [
+      '"CasaPay Link Chrome plugin works with ANY PMS. Your team keeps their current system — we sit on top. No migration needed."',
+      'Or: "Our email alias method means zero integration — just change the email address on your invoice."',
+    ]},
+    { title: '"Too expensive vs PayProp/GoCardless"', tips: [
+      '"CasaPay replaces 3-5 vendors: payment processing + screening + deposit management + credit building + guarantees. Run the savings calculator — typically saves ~£1,000/month."',
+    ]},
+    { title: '"We already have Stripe"', tips: [
+      '"Stripe handles payments only. CasaPay includes screening + guarantee + deposit replacement at the same price point. You\'d need Stripe + screening vendor + deposit vendor + guarantee provider = 4 contracts vs 1."',
+    ]},
+  ],
+  'offer-close': [
+    { title: 'Framing the Offer', tips: [
+      'Tie back to THEIR pain points from discovery',
+      'Show specific savings using their portfolio size',
+      'Recommend a tier based on what you learned',
+      '"Based on your 300 beds, the COVER tier at 1.5% would save you approximately £X/month vs your current setup"',
+    ]},
+    { title: 'Close Techniques', tips: [
+      'Direct: "Shall I send the offer document today?"',
+      'Pilot: "Would you like to start with one property as a pilot?"',
+      'Timeline: "To be live for September intake, we\'d need to start onboarding by [date]"',
+      'Assumptive: "I\'ll send the proposal — when works for a 15-min call to walk through the terms?"',
+    ]},
+    { title: 'If They Hesitate', tips: [
+      '"Is there a specific concern I can address?"',
+      '"Would it help to loop in your operations/finance team?"',
+      '"Happy to share a case study from a similar operator"',
+      'Never pressure — propose a clear next step instead',
+    ]},
+  ],
 };
 
 // ── Ring Tone (inline data URI — no external file needed) ────────────────────
@@ -315,12 +430,50 @@ function LiveTranscript({ lines }: { lines: TranscriptLine[] }) {
   );
 }
 
+function ScriptPanel({ stageId }: { stageId: StageId }) {
+  const cards = STAGE_SCRIPTS[stageId];
+  const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
+
+  const toggle = (i: number) => setCollapsed((prev) => ({ ...prev, [i]: !prev[i] }));
+
+  return (
+    <div className="h-full overflow-y-auto custom-scrollbar space-y-3 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <BookOpen size={14} className="text-emerald-400" />
+        <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Script</span>
+      </div>
+      {cards.map((card, i) => (
+        <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+          <button
+            onClick={() => toggle(i)}
+            className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+          >
+            <span className="text-[11px] font-bold text-slate-300">{card.title}</span>
+            <ChevronRight size={12} className={`text-slate-600 transition-transform ${collapsed[i] ? '' : 'rotate-90'}`} />
+          </button>
+          {!collapsed[i] && (
+            <div className="px-3 pb-3 space-y-1.5">
+              {card.tips.map((tip, j) => (
+                <div key={j} className="flex gap-2 text-[10px] leading-relaxed text-slate-500">
+                  <span className="text-emerald-500/60 mt-0.5 shrink-0">•</span>
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function TrainingSimulator() {
   const [view, setView] = useState<View>('setup');
   const [selectedPersona, setSelectedPersona] = useState<PersonaId | null>(null);
   const [selectedStage, setSelectedStage] = useState<StageId | null>(null);
+  const [callMode, setCallMode] = useState<CallMode>('training');
   const [callActive, setCallActive] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
   const [connecting, setConnecting] = useState(false);
@@ -345,10 +498,12 @@ export default function TrainingSimulator() {
   const selectedStageRef = useRef<StageId | null>(null);
   const finishingRef = useRef(false);
   const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const callModeRef = useRef<CallMode>('training');
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
   useEffect(() => { selectedStageRef.current = selectedStage; }, [selectedStage]);
+  useEffect(() => { callModeRef.current = callMode; }, [callMode]);
 
   // Persist sessions
   useEffect(() => {
@@ -417,6 +572,7 @@ export default function TrainingSimulator() {
       conversationId: convId,
       persona: selectedPersonaRef.current!,
       stage: selectedStageRef.current!,
+      mode: callModeRef.current,
       date: new Date().toISOString(),
       duration: callSecondsRef.current,
       scores,
@@ -576,8 +732,18 @@ export default function TrainingSimulator() {
                       </div>
                       <div>
                         <div className="text-xs font-bold text-white">{persona.name}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">
-                          {stage.name} &middot; {formatTime(s.duration)} &middot; {new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                            s.mode === 'training'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}>
+                            {s.mode === 'training' ? <BookOpen size={8} /> : <Trophy size={8} />}
+                            {s.mode || 'exam'}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {stage.name} &middot; {formatTime(s.duration)} &middot; {new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -628,7 +794,17 @@ export default function TrainingSimulator() {
             <span className={`text-[10px] font-bold uppercase tracking-widest text-${persona.color}-400`}>{persona.segment} &middot; {stage.name}</span>
           </div>
           <h1 className="text-lg font-black text-white">Session Scorecard</h1>
-          <p className="text-xs text-slate-500">{formatTime(lastSession.duration)} call duration</p>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+              lastSession.mode === 'training'
+                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+            }`}>
+              {lastSession.mode === 'training' ? <BookOpen size={10} /> : <Trophy size={10} />}
+              {lastSession.mode || 'exam'} mode
+            </span>
+            <span className="text-xs text-slate-500">{formatTime(lastSession.duration)} call duration</span>
+          </div>
         </div>
 
         <div className="text-center py-6">
@@ -678,9 +854,10 @@ export default function TrainingSimulator() {
   if (view === 'call') {
     const persona = PERSONAS.find((p) => p.id === selectedPersona)!;
     const stage = STAGES.find((s) => s.id === selectedStage)!;
+    const showScript = callMode === 'training';
 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 -mt-16">
+    const callContent = (
+      <div className={`flex flex-col items-center ${showScript ? 'justify-start pt-12' : 'justify-center min-h-screen -mt-16'} p-6`}>
         {/* Persona badge */}
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-${persona.color}-500/10 border border-${persona.color}-500/30 mb-6`}>
           <User size={12} className={`text-${persona.color}-400`} />
@@ -743,6 +920,19 @@ export default function TrainingSimulator() {
         </div>
       </div>
     );
+
+    if (!showScript) return callContent;
+
+    return (
+      <div className="flex flex-col lg:flex-row min-h-screen">
+        <div className="flex-1 lg:w-[60%]">
+          {callContent}
+        </div>
+        <div className="lg:w-[40%] border-t lg:border-t-0 lg:border-l border-white/10 bg-white/[0.01] overflow-hidden">
+          <ScriptPanel stageId={selectedStage!} />
+        </div>
+      </div>
+    );
   }
 
   // ── Render: Setup View ────────────────────────────────────────────────────
@@ -783,6 +973,49 @@ export default function TrainingSimulator() {
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
             <span className="text-[10px] font-black text-emerald-400">2</span>
+          </div>
+          <span className="text-xs font-bold text-white">Select Mode</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setCallMode('training')}
+            className={`text-left p-4 rounded-xl border transition-all duration-200 ${
+              callMode === 'training'
+                ? 'bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500/20'
+                : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${callMode === 'training' ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-white/5 border border-white/10'}`}>
+                <BookOpen size={14} className={callMode === 'training' ? 'text-blue-400' : 'text-slate-500'} />
+              </div>
+              <span className={`text-xs font-bold ${callMode === 'training' ? 'text-blue-400' : 'text-white'}`}>Training</span>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-relaxed">Guided script with talk tracks, objection responses, and tips displayed during the call</p>
+          </button>
+          <button
+            onClick={() => setCallMode('exam')}
+            className={`text-left p-4 rounded-xl border transition-all duration-200 ${
+              callMode === 'exam'
+                ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
+                : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${callMode === 'exam' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-white/5 border border-white/10'}`}>
+                <Trophy size={14} className={callMode === 'exam' ? 'text-amber-400' : 'text-slate-500'} />
+              </div>
+              <span className={`text-xs font-bold ${callMode === 'exam' ? 'text-amber-400' : 'text-white'}`}>Exam</span>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-relaxed">No assistance. Test your skills under real conditions</p>
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+            <span className="text-[10px] font-black text-emerald-400">3</span>
           </div>
           <span className="text-xs font-bold text-white">Select Sales Stage</span>
         </div>
