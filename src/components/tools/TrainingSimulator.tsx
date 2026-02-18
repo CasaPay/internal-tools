@@ -125,6 +125,60 @@ const STAGE_CONTEXT: Record<StageId, string> = {
   'offer-close': 'The sales rep is discussing pricing and trying to close. Push back on pricing, ask about discounts, compare to alternatives. Only agree to next steps if they make a compelling case with specific numbers.',
 };
 
+// ── Ring Tone (Web Audio API) ────────────────────────────────────────────────
+
+function createRingTone(): { start: () => void; stop: () => void } {
+  let ctx: AudioContext | null = null;
+  let gainNode: GainNode | null = null;
+  let osc1: OscillatorNode | null = null;
+  let osc2: OscillatorNode | null = null;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let stopped = false;
+
+  function ring() {
+    if (!ctx || stopped) return;
+    // UK-style ring: 400Hz + 450Hz dual tone, 0.4s on, 0.2s off, 0.4s on, 2s off
+    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime);
+    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime + 0.4);
+    gainNode!.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.42);
+    gainNode!.gain.setValueAtTime(0, ctx.currentTime + 0.6);
+    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime + 0.62);
+    gainNode!.gain.setValueAtTime(0.15, ctx.currentTime + 1.0);
+    gainNode!.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.02);
+  }
+
+  return {
+    start() {
+      stopped = false;
+      ctx = new AudioContext();
+      gainNode = ctx.createGain();
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.connect(ctx.destination);
+
+      osc1 = ctx.createOscillator();
+      osc1.frequency.setValueAtTime(400, ctx.currentTime);
+      osc1.connect(gainNode);
+      osc1.start();
+
+      osc2 = ctx.createOscillator();
+      osc2.frequency.setValueAtTime(450, ctx.currentTime);
+      osc2.connect(gainNode);
+      osc2.start();
+
+      ring();
+      intervalId = setInterval(ring, 3000);
+    },
+    stop() {
+      stopped = true;
+      if (intervalId) clearInterval(intervalId);
+      try { osc1?.stop(); } catch {}
+      try { osc2?.stop(); } catch {}
+      try { ctx?.close(); } catch {}
+      ctx = null;
+    },
+  };
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatTime(seconds: number): string {
@@ -266,6 +320,7 @@ export default function TrainingSimulator() {
   const selectedPersonaRef = useRef<PersonaId | null>(null);
   const selectedStageRef = useRef<StageId | null>(null);
   const finishingRef = useRef(false);
+  const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
@@ -292,6 +347,10 @@ export default function TrainingSimulator() {
     // Prevent double-finish
     if (finishingRef.current) return;
     finishingRef.current = true;
+
+    // Ensure ring tone is stopped
+    ringToneRef.current?.stop();
+    ringToneRef.current = null;
 
     setCallActive(false);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -373,6 +432,11 @@ export default function TrainingSimulator() {
       const signedUrl = urlData.signed_url;
       if (!signedUrl) throw new Error(`No signed_url in response: ${JSON.stringify(urlData)}`);
 
+      // Play ringing tone while connecting
+      const ringTone = createRingTone();
+      ringToneRef.current = ringTone;
+      ringTone.start();
+
       // Start ElevenLabs conversation
       const conversation = await Conversation.startSession({
         signedUrl: signedUrl,
@@ -385,6 +449,9 @@ export default function TrainingSimulator() {
           },
         },
         onConnect: ({ conversationId }) => {
+          // Stop ringing — AI is "picking up"
+          ringToneRef.current?.stop();
+          ringToneRef.current = null;
           conversationIdRef.current = conversationId;
           setConnecting(false);
           setCallActive(true);
@@ -412,6 +479,8 @@ export default function TrainingSimulator() {
       conversationRef.current = conversation;
     } catch (err: any) {
       console.error('startCall error:', err);
+      ringToneRef.current?.stop();
+      ringToneRef.current = null;
       setConnecting(false);
       setError(err.message || 'Failed to connect');
       setView('setup');
@@ -600,8 +669,8 @@ export default function TrainingSimulator() {
         <div className="flex items-center gap-2 mb-6">
           {connecting ? (
             <>
-              <Loader2 size={14} className="text-amber-400 animate-spin" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Connecting...</span>
+              <Phone size={14} className="text-amber-400 animate-bounce" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Ringing...</span>
             </>
           ) : (
             <>
