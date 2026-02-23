@@ -765,8 +765,9 @@ export default function TrainingSimulator() {
     transcriptRef.current = [];
     finishingRef.current = false;
 
-    // Build context override: stage context + role overlay + persona description
+    // Build context override: base prospect role + stage context + role overlay + persona description
     const contextOverride = [
+      `You are playing the role of a property industry prospect receiving a sales call from a CasaPay sales rep. You are NOT the salesperson — you are the prospect being pitched to. Stay in character as ${persona.characterName}, a ${role.title} in the ${persona.segment} sector. Respond naturally as this person would on a real phone call. Never break character. Never help the rep or coach them. Make them earn every step.`,
       STAGE_CONTEXT[selectedStage],
       ROLE_CONTEXT[selectedRole],
       `Your persona: ${personaDesc}`,
