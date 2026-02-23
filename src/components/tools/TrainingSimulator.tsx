@@ -1074,13 +1074,14 @@ export default function TrainingSimulator() {
           const MAX_SECONDS = 600; // 10 minutes
           const remaining = Math.max(0, MAX_SECONDS - callSeconds);
           const timerColor = remaining <= 60 ? 'text-red-400' : remaining <= 120 ? 'text-amber-400' : 'text-white';
+          const remainingColor = remaining <= 60 ? 'text-red-400/80' : remaining <= 120 ? 'text-amber-400/80' : 'text-slate-500';
           return (
             <>
               <div className={`text-4xl font-black font-mono mb-1 ${timerColor}`}>
                 {formatTime(callSeconds)}
               </div>
-              {callActive && remaining <= 120 && (
-                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${remaining <= 60 ? 'text-red-400/80' : 'text-amber-400/80'}`}>
+              {callActive && (
+                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${remainingColor}`}>
                   {formatTime(remaining)} remaining
                 </div>
               )}
