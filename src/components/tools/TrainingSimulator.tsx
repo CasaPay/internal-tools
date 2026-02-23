@@ -7,9 +7,18 @@ import { Phone, PhoneOff, Play, ChevronRight, RotateCcw, User, MessageSquare, Hi
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type PersonaId = 'pbsa' | 'hmo' | 'btr' | 'coliving';
+type RoleId = 'operational' | 'strategic';
 type StageId = 'cold-intro' | 'discovery' | 'demo-pitch' | 'objection-handling' | 'offer-close';
 type CallMode = 'training' | 'exam';
 type View = 'setup' | 'call' | 'scorecard' | 'history';
+
+interface Role {
+  id: RoleId;
+  label: string;
+  title: string;
+  description: string;
+  concerns: string[];
+}
 
 interface Persona {
   id: PersonaId;
@@ -44,6 +53,7 @@ interface Session {
   id: string;
   conversationId: string;
   persona: PersonaId;
+  role: RoleId;
   stage: StageId;
   mode: CallMode;
   date: string;
@@ -58,89 +68,205 @@ interface Session {
 const PERSONAS: Persona[] = [
   {
     id: 'pbsa',
-    name: 'The Skeptical PBSA Manager',
+    name: 'PBSA Operator',
     characterName: 'James',
     segment: 'PBSA',
-    description: '500+ beds, cautious, needs proof. Raises "early-stage product" and "will students adopt it?" objections.',
+    description: '500+ beds, September intake pressure, 45% international students, StarRez PMS.',
     color: 'emerald',
     agentId: 'agent_6301khqyrhrkehmbj665e1sd69vb',
   },
   {
     id: 'hmo',
-    name: 'The Overwhelmed HMO Operator',
+    name: 'HMO Operator',
     characterName: 'Dave',
     segment: 'HMO',
-    description: 'Drowning in admin, time-poor. Raises "need full PMS integration" and "no time for onboarding" objections.',
+    description: '80 rooms across 12 properties, chasing rent via standing orders, 16-day average voids.',
     color: 'blue',
     agentId: 'agent_5001khqys3gve87tpsarnt8d8vp3',
   },
   {
     id: 'btr',
-    name: 'The Tech-Savvy BTR Director',
+    name: 'BTR Operator',
     characterName: 'Sarah',
     segment: 'BTR',
-    description: 'Technically literate, asks about APIs, data security, GDPR, reporting. Detailed questions.',
+    description: '300+ units, Yardi PMS, institutional investors, GDPR/SOC 2 requirements.',
     color: 'violet',
     agentId: 'agent_5101khqysdd2erk9tarap9d5jzfy',
   },
   {
     id: 'coliving',
-    name: 'The Price-Conscious Co-Living Founder',
+    name: 'Co-Living Operator',
     characterName: 'Emma',
     segment: 'Co-Living',
-    description: 'Compares everything on price. Raises "too expensive vs PayProp/GoCardless" and "we already have Stripe" objections.',
+    description: '200 beds, community-first brand, all-inclusive pricing, 50% international residents.',
     color: 'amber',
     agentId: 'agent_6101khqysrptfwmtp272ne3g9zf0',
   },
 ];
 
-// First message the AI says when "picking up the phone" — varies by stage
-function getFirstMessage(persona: Persona, stage: StageId): string {
+// ── Roles ─────────────────────────────────────────────────────────────────
+
+const ROLES: Record<PersonaId, Record<RoleId, Role>> = {
+  pbsa: {
+    operational: {
+      id: 'operational',
+      label: 'Operational',
+      title: 'Residence Manager',
+      description: 'Runs the building day-to-day, manages student intake, deals with complaints. Worried about adding another system during September chaos.',
+      concerns: ['Staff time', 'Workflow disruption', 'Team adoption', 'Peak season timing'],
+    },
+    strategic: {
+      id: 'strategic',
+      label: 'Strategic',
+      title: 'Head of Operations',
+      description: 'Oversees 5+ PBSA properties (2,500+ beds). Reports to institutional investors. Needs portfolio-wide ROI numbers.',
+      concerns: ['Portfolio ROI', 'Vendor maturity', 'Student adoption', 'Investor approval'],
+    },
+  },
+  hmo: {
+    operational: {
+      id: 'operational',
+      label: 'Operational',
+      title: 'Property Manager',
+      description: 'Manages 12+ properties for the owner. Chases rent, handles maintenance, does viewings. Barely has time for admin, resistant to change.',
+      concerns: ['Time savings', 'Tenant adoption', 'Learning curve', 'Current workflow'],
+    },
+    strategic: {
+      id: 'strategic',
+      label: 'Strategic',
+      title: 'Owner-Director',
+      description: 'Owns the Ltd company, makes financial decisions. Cares about yield, void costs, deposit capital tied up.',
+      concerns: ['Yield impact', 'Void costs', 'Deposit capital', 'Switching cost'],
+    },
+  },
+  btr: {
+    operational: {
+      id: 'operational',
+      label: 'Operational',
+      title: 'Building Manager',
+      description: 'Runs a single 300-unit building. Manages on-site team of 8. Uses Yardi for everything. Worried about disrupting the current workflow.',
+      concerns: ['Yardi integration', 'Team retraining', 'Resident satisfaction', 'System disruption'],
+    },
+    strategic: {
+      id: 'strategic',
+      label: 'Strategic',
+      title: 'Portfolio Director',
+      description: 'Oversees 1,200+ units across 4 cities. Reports to fund investors quarterly. Needs fund-level, asset-level, and unit-level financial reporting.',
+      concerns: ['Scale proof', 'GDPR/SOC 2', 'Fund reporting', 'Vendor risk'],
+    },
+  },
+  coliving: {
+    operational: {
+      id: 'operational',
+      label: 'Operational',
+      title: 'Community Manager',
+      description: 'Runs the day-to-day experience. Organises events, handles resident issues. Hates being a rent collector, wants to focus on community.',
+      concerns: ['Community vibe', 'Move-in friction', 'Digital experience', 'Turnover speed'],
+    },
+    strategic: {
+      id: 'strategic',
+      label: 'Strategic',
+      title: 'Founder/CEO',
+      description: 'Built the brand, makes all vendor decisions. Price-sensitive, compares everything to DIY Stripe setup.',
+      concerns: ['Cost vs DIY Stripe', 'Unit economics', 'Brand alignment', 'Pro-rata complexity'],
+    },
+  },
+};
+
+// ── Persona Descriptions (role-aware) ─────────────────────────────────────
+
+const PERSONA_DESCRIPTIONS: Record<PersonaId, Record<RoleId, string>> = {
+  pbsa: {
+    operational: 'Residence Manager at a 500-bed PBSA in Manchester. Manages September intake personally — 400+ students onboarded in 3 weeks. Currently uses StarRez for PMS and manually chases late payments. 45% international students with no UK guarantors. Worried about adding complexity during peak season. Pushes back with "we\'re already drowning in September", "my team won\'t learn another system", "StarRez handles everything we need".',
+    strategic: 'Head of Operations overseeing 5 PBSA properties (2,500+ beds). Reports to institutional investors. Currently paying GoCardless + Housing Hand + DPS registration across all sites. £1.2M locked in deposits. Needs portfolio-level reporting. Pushes back with "you\'re early-stage for our scale", "will students adopt it?", "our investors need to approve new vendors", "what happens if CasaPay goes under?".',
+  },
+  hmo: {
+    operational: 'Property manager handling 80 rooms across 12 HMO properties. Spends 3+ hours/week chasing rent via standing orders, doing viewings to fill voids, dealing with deposit disputes. No proper tenant screening — takes whoever applies first. 16-day average void per room. Pushes back with "standing orders work fine", "I don\'t have time to learn a new system", "will tenants actually use an app?".',
+    strategic: 'Owner-Director of an HMO portfolio. Owns 80 rooms across 12 properties via Ltd company. Focused on yield — each void costs £1,085. Has £40K locked in deposits across DPS. Considering expansion but cash flow is tight. Pushes back with "I only have 80 rooms — is it worth it?", "1.5% eats into my yield", "I can\'t afford the switching cost right now".',
+  },
+  btr: {
+    operational: 'Building Manager at a 300-unit BTR in Birmingham. Manages on-site team of 8. Uses Yardi for everything — payments, maintenance, reporting. Prides themselves on resident satisfaction scores. Worried about disrupting the Yardi workflow. Pushes back with "Yardi handles our payments already", "my team just got trained on the current system", "residents are happy with the current payment portal".',
+    strategic: 'Portfolio Director overseeing 1,200 units across 4 cities. Reports to fund investors quarterly. Uses Yardi + Flatfair for deposits. £1.5M locked in deposit schemes, 250 deposit cycles/year. Needs fund-level, asset-level, and unit-level financial reporting. Pushes back with "we already use Flatfair", "can you handle 2,000 units?", "our fund requires ISO 27001 / SOC 2 vendors", "what\'s your GDPR position?".',
+  },
+  coliving: {
+    operational: 'Community Manager at a 200-bed co-living scheme in London. Organises events, manages move-ins/outs, handles resident issues. Hates chasing rent — it damages the community vibe. 50% international residents, constant turnover (4-8 month stays). Uses Res:Harmonics. Pushes back with "we\'re not traditional landlords", "will this add friction to the move-in experience?", "our residents expect seamless digital everything".',
+    strategic: 'Founder of a co-living brand with 200 beds in London, expanding to 500. Built the brand on community, but unit economics are tight. Currently using Stripe + manual screening + no guarantee. All-inclusive pricing makes pro-rata complex. Pushes back with "too expensive vs our DIY Stripe setup", "we already have Stripe", "GoCardless is cheaper", "1.5% on £2M rent roll is £30K — justify that".',
+  },
+};
+
+// First message the AI says when "picking up the phone" — varies by stage and role
+function getFirstMessage(persona: Persona, role: Role, stage: StageId): string {
   const name = persona.characterName;
+  const title = role.title;
   switch (stage) {
     case 'cold-intro':
       return `Hello, ${name} speaking.`;
     case 'discovery':
-      return `Hi, ${name} here. Thanks for calling — I've got about fifteen minutes, so let's get into it.`;
+      return role.id === 'operational'
+        ? `Hi, ${name} here. Thanks for calling — I've got about ten minutes before I need to get back to it, so let's be quick.`
+        : `Hi, ${name} here. Thanks for calling — I've got fifteen minutes. What's this about?`;
     case 'demo-pitch':
-      return `Hi there, ${name} speaking. I believe we had this call booked in for a product walkthrough? Go ahead.`;
+      return role.id === 'operational'
+        ? `Hi there, ${name} speaking. I believe we had this call booked in for a product walkthrough? Go ahead, but keep it practical — I need to understand how this actually works day-to-day.`
+        : `Hi there, ${name} speaking. I believe we had this call booked in for a product walkthrough? Before we get into features — give me the commercial overview first.`;
     case 'objection-handling':
-      return `Hi, ${name} here. So look, I've had a chance to think about what we discussed last time, and I've got some questions before we go any further.`;
+      return role.id === 'operational'
+        ? `Hi, ${name} here. So look, I've been thinking about what we discussed last time, and I've got some practical concerns before we go any further.`
+        : `Hi, ${name} here. So I've reviewed what you sent. I've got some questions about the numbers and the risk profile before we go any further.`;
     case 'offer-close':
-      return `Hi, ${name} speaking. Right, so I understand you're sending over a proposal. Before we go through numbers, tell me what you're thinking.`;
+      return role.id === 'operational'
+        ? `Hi, ${name} speaking. Right, so before we talk numbers — I need to understand exactly what changes for my team if we go ahead.`
+        : `Hi, ${name} speaking. Right, so I understand you're sending over a proposal. Before we go through numbers, tell me what you're thinking in terms of total cost and savings.`;
   }
 }
 
 const STAGES: Stage[] = [
-  { id: 'cold-intro', name: 'Cold Intro', duration: '~2 min', description: 'Hook + value prop in 30 seconds, get the meeting' },
-  { id: 'discovery', name: 'Discovery', duration: '~5 min', description: 'Qualifying questions using 10-question scoring framework' },
-  { id: 'demo-pitch', name: 'Demo Pitch', duration: '~8 min', description: 'Explain product verbally — Chrome extension, AI gateway, tiers, guarantee' },
-  { id: 'objection-handling', name: 'Objection Handling', duration: '~5 min', description: 'All 5 documented objections + product knowledge questions' },
-  { id: 'offer-close', name: 'Offer & Close', duration: '~3 min', description: 'Pricing discussion, savings calculator framing, commitment ask' },
+  { id: 'cold-intro', name: 'Cold Intro', duration: '~2 min', description: 'Hook referencing segment pain + Renters Rights Act. Get 30 seconds, then a meeting.' },
+  { id: 'discovery', name: 'Discovery', duration: '~5 min', description: 'Identify primary pain (occupancy/payments/cash flow) + ownership model. Qualify before pitching.' },
+  { id: 'demo-pitch', name: 'Demo Pitch', duration: '~8 min', description: 'Confirm pain points, match to correct tier, explain product. Chrome extension + AI gateway.' },
+  { id: 'objection-handling', name: 'Objection Handling', duration: '~5 min', description: 'Segment-specific objections + pricing vs current stack comparison.' },
+  { id: 'offer-close', name: 'Offer & Close', duration: '~3 min', description: 'Specific savings for THEIR portfolio. Pilot terms, September timeline, commitment ask.' },
 ];
 
 const STAGE_CONTEXT: Record<StageId, string> = {
-  'cold-intro': 'The sales rep is making a cold introduction call. They should deliver a compelling 30-second hook and value proposition to get a meeting booked. Be initially dismissive but give them a chance if their hook is good.',
-  'discovery': 'The sales rep is running a discovery call. They should ask qualifying questions about your portfolio, pain points, current systems, and decision timeline. Only volunteer information when asked directly.',
-  'demo-pitch': 'The sales rep is giving a verbal product demo. They should explain the CasaPay product clearly — Chrome extension, AI invoicing gateway, pricing tiers, guarantee product. Ask clarifying questions and test their product knowledge.',
-  'objection-handling': 'Raise your objections early and firmly. The sales rep needs to handle them convincingly. If they give a weak response, push back harder. If they give a strong, specific response, acknowledge it but raise another objection.',
-  'offer-close': 'The sales rep is discussing pricing and trying to close. Push back on pricing, ask about discounts, compare to alternatives. Only agree to next steps if they make a compelling case with specific numbers.',
+  'cold-intro': 'The sales rep is making a cold introduction call. They should reference a segment-specific pain point and the Renters Rights Act changes. Be dismissive initially but give them 30 seconds if their hook is specific to your situation. If the hook is generic, shut it down quickly.',
+  'discovery': 'The sales rep is running a discovery call. They MUST ask about your primary pain point (occupancy, payment ops, or cash flow) and your ownership model (do you own, lease, or manage for investors). If they skip qualification and jump to pitching, push back: "You haven\'t even asked about our situation yet." Only volunteer information when asked directly.',
+  'demo-pitch': 'The sales rep is giving a verbal product demo. They should confirm the pain points from discovery FIRST, then match you to the right product tier. If they pitch the wrong tier (e.g., payment guarantee when your issue is occupancy), challenge them. Ask clarifying questions and test their product knowledge.',
+  'objection-handling': 'Raise your objections early and firmly. Push back on pricing by comparing to your current vendor stack cost. If they give a weak response, push back harder. If they give a strong, specific response with numbers, acknowledge it but raise another objection.',
+  'offer-close': 'The sales rep is discussing pricing and trying to close. Demand specific savings numbers for YOUR portfolio size. Push back on commitment — ask about pilot terms, implementation timeline, and what happens if it doesn\'t work. Only agree to next steps if they make a compelling case with your specific numbers.',
+};
+
+const ROLE_CONTEXT: Record<RoleId, string> = {
+  operational: 'You are a hands-on operational manager, not the decision maker. You care about: daily workflow impact, team adoption, integration with your current systems, timing (don\'t disrupt peak season). You do NOT have budget authority — if convinced, you\'d say "I\'d need to run this by my director/owner." If the rep doesn\'t acknowledge your operational concerns and jumps to ROI numbers, push back: "That\'s great for the spreadsheet, but tell me how this actually works for my team on Monday morning." Be more informal and time-pressured. Ask practical questions about day-to-day workflow.',
+  strategic: 'You are the decision maker with budget authority. You care about: ROI, total cost vs current multi-vendor stack, risk (vendor maturity, data security), scale, reporting for investors/board. You are NOT interested in operational details — if the rep dives into features without showing the business case first, redirect: "Before we get into the features — tell me about the commercial model and what this saves us." Be more formal and time-conscious. Ask business questions about numbers and risk. If they can make a strong financial case with specific numbers, you\'ll consider a pilot.',
 };
 
 // ── Script Data (Training Mode) ──────────────────────────────────────────────
 
+// Script cards now support optional `roleFilter` — if set, only shown for that role
 interface ScriptCard {
   title: string;
   tips: string[];
+  roleFilter?: RoleId;
 }
 
 const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
   'cold-intro': [
     { title: 'Opening Hook', tips: [
       'Introduce yourself: name + CasaPay',
-      'Reference their segment pain: "As a [PBSA/HMO/...] operator, the Renters Rights Act changes from May 1st..."',
+      'Reference their segment pain + Renters Rights Act: "As a [PBSA/HMO/...] operator, with the Renters Rights Act changes..."',
       'Value prop in 1 sentence: "We provide guaranteed rent on time — you send an invoice, we pay on the due date, even if the tenant is late."',
       'Ask for 30 seconds: "Would you have 30 seconds for me to explain how?"',
+    ]},
+    { title: 'Hook for Operational Roles', roleFilter: 'operational', tips: [
+      'Lead with time savings: "Save your team X hours/week on payment chasing"',
+      'Emphasise workflow simplicity: "Works on top of your current PMS — zero integration"',
+      'Reference their daily pain: "No more manual chasing, no more deposit admin"',
+    ]},
+    { title: 'Hook for Strategic Roles', roleFilter: 'strategic', tips: [
+      'Lead with cost: "Save £X/month vs your current 3-5 vendor stack"',
+      'Emphasise ROI: "Release £X locked in deposits back into operations"',
+      'Reference business impact: "Portfolio-wide reporting, one vendor replacing five"',
     ]},
     { title: 'If They Engage', tips: [
       'Qualify quickly: "How many beds/units do you manage?"',
@@ -154,87 +280,121 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
     ]},
   ],
   'discovery': [
-    { title: 'Qualifying Questions (ask 4-5)', tips: [
-      '"How many beds/units do you operate?"',
-      '"How are you currently handling deposits? What\'s the compliance overhead?"',
-      '"What % of your tenants are international students?"',
-      '"What PMS system are you using?"',
-      '"Who handles payment collection today — Stripe, GoCardless, bank transfers?"',
-      '"When would you want to implement — before September intake?"',
-      '"Are you the right person to decide, or should we loop in operations/finance?"',
+    { title: '3 Pain Points (identify #1 first)', tips: [
+      '🔴 OCCUPANCY — Low fill rates, struggling to attract tenants, competition. → Lead with tenant membership card, verified tenant pool',
+      '🟡 PAYMENT OPS — Manual chasing, multiple vendors, international payment friction. → Lead with AI gateway, email alias, zero integration',
+      '🟢 CASH FLOW — High occupancy but late payments kill liquidity, must pay owners on time. → Lead with ON-TIME guarantee, predictable payouts',
+      'Ask: "What\'s your biggest challenge right now — filling units, collecting payments, or cash flow timing?"',
     ]},
-    { title: 'Pain Points to Listen For', tips: [
-      'Deposit admin overhead → lead with deposit elimination',
-      'Multiple vendors → lead with all-in-one savings',
-      'Late payment cash flow gaps → lead with ON-TIME tier',
-      'No tech integration → lead with email alias (zero integration)',
-      'International tenants → lead with FX + credit building',
+    { title: 'Ownership Model (CRITICAL)', tips: [
+      'Ask: "Do you own your buildings, or do you lease/manage them for investors?"',
+      '🏠 OPERATOR (leases) → Cash flow is ALWAYS a top-2 pain. Must pay owners regardless of tenant timing → ON-TIME tier',
+      '🏗️ DEVELOPER/OWNER → Occupancy pain likely. Need to fill units → COVER tier',
+      '🔄 HYBRID → Both pains. Own some (occupancy), lease others (cash flow) → COVER → ON-TIME',
+      '📋 PROPERTY MANAGER → Payment ops pain. Efficient systems for investor reporting → PAYMENTS tier',
     ]},
+    { title: 'Adjust for Role', tips: [
+      'If talking to OPERATIONAL: focus on workflow questions, team size, current daily process, peak season timing',
+      'If talking to STRATEGIC: focus on cost structure, portfolio size, vendor contracts, board reporting needs, decision timeline',
+      'Operational won\'t know ROI numbers — don\'t ask. Strategic won\'t know daily workflow — don\'t dwell.',
+    ], roleFilter: undefined },
     { title: 'Key Rule', tips: [
       'Listen more than you talk (40-60% ratio)',
       'Don\'t pitch yet — understand their situation first',
-      'Take notes on what they say — reference it later',
+      'Confirm: "So if I\'m hearing you right, your #1 issue is [X]?"',
+      'Document pain + ownership model before moving to demo',
     ]},
   ],
   'demo-pitch': [
-    { title: 'Demo Flow (7 steps)', tips: [
-      '1. [2 min] Confirm pain points from discovery',
-      '2. [3 min] CasaPay overview + match to right tier',
-      '3. [5 min] Explain AI gateway: operator sends invoice to @alias → AI parses → tenant pays → operator gets payout',
-      '4. [3 min] Chrome extension: works with ANY PMS, no integration needed',
-      '5. [3 min] Savings calculator: typical 500-unit operator saves ~£1,000/month',
-      '6. [2 min] Q&A',
-      '7. [2 min] Next steps — send offer or schedule follow-up',
+    { title: 'Operational Framing', roleFilter: 'operational', tips: [
+      'Lead with Chrome extension demo — "Your team keeps using [current PMS], we sit on top"',
+      'Show email alias simplicity — "Change one email address, that\'s it"',
+      'Focus on what DOESN\'T change for their team',
+      'Address peak season: "Can go live in 2 weeks, well before September intake"',
     ]},
-    { title: 'Product Tiers', tips: [
-      'PAYMENTS (1.0%) — collection + screening',
-      'COVER (1.5%) — + guarantee + deposit elimination',
-      'ON-TIME (2.5%) — guaranteed payout on due date',
-      'ENTERPRISE (custom) — 500+ units, dedicated AM',
+    { title: 'Strategic Framing', roleFilter: 'strategic', tips: [
+      'Lead with savings calculator — specific numbers for their portfolio size',
+      'Show tier recommendation matched to their pain from discovery',
+      'Portfolio-wide impact: "Across your 2,500 beds, that\'s £X/year in savings + £X released from deposits"',
+      'Competitor comparison: "You\'re currently paying GoCardless + Housing Hand + DPS = £X. We replace all three for £Y."',
+    ]},
+    { title: 'Demo Flow', tips: [
+      '1. Confirm pain points from discovery (don\'t skip this)',
+      '2. Match to the right tier based on pain + ownership model',
+      '3. AI gateway: operator sends invoice to @alias → AI parses → tenant pays → operator gets payout',
+      '4. Chrome extension: works with ANY PMS, no IT integration',
+      '5. Savings calculator with THEIR numbers',
+      '6. Q&A → Next steps',
+    ]},
+    { title: 'Product Tiers (match to pain)', tips: [
+      'PAYMENTS (1.0%) — collection + screening. For: payment ops pain, property managers',
+      'COVER (1.5%) — + guarantee + deposit elimination. For: occupancy pain, developers/owners',
+      'ON-TIME (2.5%) — guaranteed payout on due date. For: cash flow pain, operators who lease',
+      'ENTERPRISE (custom) — 500+ units, dedicated AM. For: portfolio directors, institutional',
     ]},
     { title: 'Proof Points', tips: [
       '36 live operators across EU + UK',
       '220+ tenants actively using',
       'Fastest deal close: 16 days (Aria Apartments)',
       'Chrome plugin = works with any PMS, no IT needed',
+      'Renters Rights Act ready — deposit replacement compliant',
     ]},
   ],
   'objection-handling': [
     { title: '"You\'re early-stage"', tips: [
-      '"We have 36 live operators, 220+ tenants, EU + UK case studies. Battle-tested across multiple markets."',
-      'Mention specific proof: Aria Apartments closed in 16 days',
-    ]},
-    { title: '"Will students adopt it?"', tips: [
-      '"International students especially value FX handling, credit building, and no deposits. Strong adoption data across Europe."',
+      '"36 live operators, 220+ tenants, EU + UK. Battle-tested across PBSA, HMO, BTR, co-living."',
+      'Specific proof: "Aria Apartments closed in 16 days, live within a month."',
+      'If strategic: offer to share case study from similar portfolio size',
     ]},
     { title: '"Need full PMS integration"', tips: [
-      '"CasaPay Link Chrome plugin works with ANY PMS. Your team keeps their current system — we sit on top. No migration needed."',
-      'Or: "Our email alias method means zero integration — just change the email address on your invoice."',
+      '"CasaPay Link Chrome plugin works with ANY PMS — StarRez, Yardi, Res:Harmonics. No migration."',
+      '"Our email alias method means zero integration — just change the email address on your invoice."',
+      '"Your team keeps their current system. We sit on top, not underneath."',
     ]},
-    { title: '"Too expensive vs PayProp/GoCardless"', tips: [
-      '"CasaPay replaces 3-5 vendors: payment processing + screening + deposit management + credit building + guarantees. Run the savings calculator — typically saves ~£1,000/month."',
+    { title: '"Too expensive / we have GoCardless / Stripe"', tips: [
+      '"CasaPay replaces 3-5 vendors: payment processing + screening + deposits + guarantees. One platform, one fee."',
+      '"Run the savings calc: GoCardless (0.5%) + Housing Hand (£200/tenant) + DPS admin (£X/year) vs CasaPay all-in at 1.5%"',
+      '"Stripe handles payments only. You still need screening + guarantee + deposit separately = 4 contracts vs 1."',
     ]},
-    { title: '"We already have Stripe"', tips: [
-      '"Stripe handles payments only. CasaPay includes screening + guarantee + deposit replacement at the same price point. You\'d need Stripe + screening vendor + deposit vendor + guarantee provider = 4 contracts vs 1."',
+    { title: 'Operational Objections', roleFilter: 'operational', tips: [
+      '"My team won\'t use another system" → "They keep their current PMS. CasaPay is invisible to them — it\'s just a Chrome extension."',
+      '"Bad timing (peak season)" → "We can go live in 2 weeks. Most ops teams are onboarded in a single afternoon session."',
+      '"Current system works fine" → "How much time per week does your team spend chasing late payments? That time has a cost."',
+    ]},
+    { title: 'Strategic Objections', roleFilter: 'strategic', tips: [
+      '"You\'re early-stage for our scale" → "We handle portfolios up to 2,500 beds. Happy to start with a pilot on one property."',
+      '"Need board/investor approval" → "Understood. Can I send a one-pager with ROI numbers your board can review?"',
+      '"Already have contracts with Flatfair/Housing Hand" → "When do those renew? Most operators run CasaPay alongside first, then consolidate."',
+      '"What if you go under?" → "Funds are held in segregated accounts. Your money is protected regardless of what happens to CasaPay."',
+    ]},
+    { title: '"Will students/tenants adopt it?"', tips: [
+      '"International students especially value: no deposit required, FX handling, UK credit history building."',
+      '"Tenant onboarding is self-serve via QR code or link. Average activation: 48 hours."',
     ]},
   ],
   'offer-close': [
-    { title: 'Framing the Offer', tips: [
-      'Tie back to THEIR pain points from discovery',
-      'Show specific savings using their portfolio size',
-      'Recommend a tier based on what you learned',
-      '"Based on your 300 beds, the COVER tier at 1.5% would save you approximately £X/month vs your current setup"',
+    { title: 'Operational Close', roleFilter: 'operational', tips: [
+      'Close = champion introduction: "Would you be open to introducing us to your [Director/Owner]?"',
+      'Or pilot close: "Can we do a pilot on your building? We handle the setup, your team just keeps doing what they do."',
+      'Timeline: "To be live for September, we\'d need to start onboarding by July."',
+      'Reassure: "Nothing changes for your team except less manual chasing."',
     ]},
-    { title: 'Close Techniques', tips: [
-      'Direct: "Shall I send the offer document today?"',
-      'Pilot: "Would you like to start with one property as a pilot?"',
-      'Timeline: "To be live for September intake, we\'d need to start onboarding by [date]"',
-      'Assumptive: "I\'ll send the proposal — when works for a 15-min call to walk through the terms?"',
+    { title: 'Strategic Close', roleFilter: 'strategic', tips: [
+      'Direct proposal: "Based on your 1,200 units, here\'s what the numbers look like..."',
+      'Pilot terms: "Start with 20-50 units on one property. Prove the ROI before rolling out."',
+      'Timeline: "To capture September intake, we need contracts signed by end of June."',
+      'Commitment: "Shall I send the proposal today? I can walk you through the terms this week."',
+    ]},
+    { title: 'Framing the Offer', tips: [
+      'Tie back to THEIR pain points from discovery + ownership model',
+      'Show specific savings using their portfolio size and current vendor costs',
+      'Recommend a tier based on pain: occupancy → COVER, payment ops → PAYMENTS, cash flow → ON-TIME',
+      '"Based on your [X] units, the [TIER] at [X%] saves you approximately £[X]/month vs your current setup"',
     ]},
     { title: 'If They Hesitate', tips: [
       '"Is there a specific concern I can address?"',
-      '"Would it help to loop in your operations/finance team?"',
-      '"Happy to share a case study from a similar operator"',
+      '"Happy to share a case study from a similar [PBSA/HMO/BTR/co-living] operator"',
+      '"Would a pilot on one property help you prove the business case internally?"',
       'Never pressure — propose a clear next step instead',
     ]},
   ],
@@ -430,8 +590,9 @@ function LiveTranscript({ lines }: { lines: TranscriptLine[] }) {
   );
 }
 
-function ScriptPanel({ stageId }: { stageId: StageId }) {
-  const cards = STAGE_SCRIPTS[stageId];
+function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) {
+  const allCards = STAGE_SCRIPTS[stageId];
+  const cards = allCards.filter((c) => !c.roleFilter || c.roleFilter === roleId);
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
 
   const toggle = (i: number) => setCollapsed((prev) => ({ ...prev, [i]: !prev[i] }));
@@ -472,6 +633,7 @@ function ScriptPanel({ stageId }: { stageId: StageId }) {
 export default function TrainingSimulator() {
   const [view, setView] = useState<View>('setup');
   const [selectedPersona, setSelectedPersona] = useState<PersonaId | null>(null);
+  const [selectedRole, setSelectedRole] = useState<RoleId>('operational');
   const [selectedStage, setSelectedStage] = useState<StageId | null>(null);
   const [callMode, setCallMode] = useState<CallMode>('training');
   const [callActive, setCallActive] = useState(false);
@@ -495,6 +657,7 @@ export default function TrainingSimulator() {
   const transcriptRef = useRef<TranscriptLine[]>([]);
   const callSecondsRef = useRef(0);
   const selectedPersonaRef = useRef<PersonaId | null>(null);
+  const selectedRoleRef = useRef<RoleId>('operational');
   const selectedStageRef = useRef<StageId | null>(null);
   const finishingRef = useRef(false);
   const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
@@ -502,6 +665,7 @@ export default function TrainingSimulator() {
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
+  useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
   useEffect(() => { selectedStageRef.current = selectedStage; }, [selectedStage]);
   useEffect(() => { callModeRef.current = callMode; }, [callMode]);
 
@@ -571,6 +735,7 @@ export default function TrainingSimulator() {
       id: crypto.randomUUID(),
       conversationId: convId,
       persona: selectedPersonaRef.current!,
+      role: selectedRoleRef.current,
       stage: selectedStageRef.current!,
       mode: callModeRef.current,
       date: new Date().toISOString(),
@@ -589,6 +754,8 @@ export default function TrainingSimulator() {
     if (!selectedPersona || !selectedStage) return;
 
     const persona = PERSONAS.find((p) => p.id === selectedPersona)!;
+    const role = ROLES[selectedPersona][selectedRole];
+    const personaDesc = PERSONA_DESCRIPTIONS[selectedPersona][selectedRole];
     setView('call');
     setConnecting(true);
     setError(null);
@@ -597,6 +764,13 @@ export default function TrainingSimulator() {
     setLiveTranscript([]);
     transcriptRef.current = [];
     finishingRef.current = false;
+
+    // Build context override: stage context + role overlay + persona description
+    const contextOverride = [
+      STAGE_CONTEXT[selectedStage],
+      ROLE_CONTEXT[selectedRole],
+      `Your persona: ${personaDesc}`,
+    ].join('\n\n');
 
     try {
       // Request mic permission
@@ -618,13 +792,16 @@ export default function TrainingSimulator() {
       ringTone.start();
 
       // Start ElevenLabs conversation (ring plays concurrently)
+      const firstMsg = getFirstMessage(persona, role, selectedStage);
       console.log('[TrainingSim] Starting session with signedUrl:', signedUrl.slice(0, 60) + '...');
-      console.log('[TrainingSim] firstMessage:', getFirstMessage(persona, selectedStage));
+      console.log('[TrainingSim] firstMessage:', firstMsg);
+      console.log('[TrainingSim] role:', selectedRole, '| context length:', contextOverride.length);
       const conversation = await Conversation.startSession({
         signedUrl: signedUrl,
         overrides: {
           agent: {
-            firstMessage: getFirstMessage(persona, selectedStage),
+            firstMessage: firstMsg,
+            prompt: { prompt: contextOverride },
           },
         },
         onConnect: ({ conversationId }) => {
@@ -671,7 +848,7 @@ export default function TrainingSimulator() {
       setError(err.message || 'Failed to connect');
       setView('setup');
     }
-  }, [selectedPersona, selectedStage, finishCall]);
+  }, [selectedPersona, selectedRole, selectedStage, finishCall]);
 
   const endCall = useCallback(() => {
     finishCall();
@@ -721,6 +898,7 @@ export default function TrainingSimulator() {
             {sessions.map((s) => {
               const persona = PERSONAS.find((p) => p.id === s.persona)!;
               const stage = STAGES.find((st) => st.id === s.stage)!;
+              const roleLabel = s.role ? (ROLES[s.persona]?.[s.role]?.title || s.role) : '';
               const scoreColor = s.overallScore >= 80 ? 'text-emerald-400' : s.overallScore >= 60 ? 'text-amber-400' : 'text-red-400';
 
               return (
@@ -731,7 +909,9 @@ export default function TrainingSimulator() {
                         <User size={16} className={`text-${persona.color}-400`} />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-white">{persona.name}</div>
+                        <div className="text-xs font-bold text-white">
+                          {persona.name}{roleLabel ? ` — ${roleLabel}` : ''}
+                        </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                             s.mode === 'training'
@@ -741,6 +921,15 @@ export default function TrainingSimulator() {
                             {s.mode === 'training' ? <BookOpen size={8} /> : <Trophy size={8} />}
                             {s.mode || 'exam'}
                           </span>
+                          {s.role && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              s.role === 'operational'
+                                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                                : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                            }`}>
+                              {s.role}
+                            </span>
+                          )}
                           <span className="text-[10px] text-slate-500">
                             {stage.name} &middot; {formatTime(s.duration)} &middot; {new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -784,6 +973,7 @@ export default function TrainingSimulator() {
 
     const persona = PERSONAS.find((p) => p.id === lastSession.persona)!;
     const stage = STAGES.find((s) => s.id === lastSession.stage)!;
+    const sessionRoleTitle = lastSession.role ? (ROLES[lastSession.persona]?.[lastSession.role]?.title || '') : '';
     const overallColor = lastSession.overallScore >= 80 ? 'text-emerald-400' : lastSession.overallScore >= 60 ? 'text-amber-400' : 'text-red-400';
 
     return (
@@ -791,7 +981,9 @@ export default function TrainingSimulator() {
         <div className="text-center space-y-2">
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-${persona.color}-500/10 border border-${persona.color}-500/30`}>
             <User size={12} className={`text-${persona.color}-400`} />
-            <span className={`text-[10px] font-bold uppercase tracking-widest text-${persona.color}-400`}>{persona.segment} &middot; {stage.name}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest text-${persona.color}-400`}>
+              {persona.segment}{sessionRoleTitle ? ` — ${sessionRoleTitle}` : ''} &middot; {stage.name}
+            </span>
           </div>
           <h1 className="text-lg font-black text-white">Session Scorecard</h1>
           <div className="flex items-center justify-center gap-2 mt-1">
@@ -803,6 +995,15 @@ export default function TrainingSimulator() {
               {lastSession.mode === 'training' ? <BookOpen size={10} /> : <Trophy size={10} />}
               {lastSession.mode || 'exam'} mode
             </span>
+            {lastSession.role && (
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                lastSession.role === 'operational'
+                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                  : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+              }`}>
+                {lastSession.role}
+              </span>
+            )}
             <span className="text-xs text-slate-500">{formatTime(lastSession.duration)} call duration</span>
           </div>
         </div>
@@ -853,6 +1054,7 @@ export default function TrainingSimulator() {
 
   if (view === 'call') {
     const persona = PERSONAS.find((p) => p.id === selectedPersona)!;
+    const role = ROLES[selectedPersona!][selectedRole];
     const stage = STAGES.find((s) => s.id === selectedStage)!;
     const showScript = callMode === 'training';
 
@@ -862,7 +1064,7 @@ export default function TrainingSimulator() {
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-${persona.color}-500/10 border border-${persona.color}-500/30 mb-6`}>
           <User size={12} className={`text-${persona.color}-400`} />
           <span className={`text-[10px] font-bold uppercase tracking-widest text-${persona.color}-400`}>
-            {persona.name}
+            {persona.segment} &middot; {role.title}
           </span>
         </div>
 
@@ -929,7 +1131,7 @@ export default function TrainingSimulator() {
           {callContent}
         </div>
         <div className="lg:w-[40%] border-t lg:border-t-0 lg:border-l border-white/10 bg-white/[0.01] overflow-hidden">
-          <ScriptPanel stageId={selectedStage!} />
+          <ScriptPanel stageId={selectedStage!} roleId={selectedRole} />
         </div>
       </div>
     );
@@ -955,12 +1157,13 @@ export default function TrainingSimulator() {
         )}
       </div>
 
+      {/* Step 1: Segment */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
             <span className="text-[10px] font-black text-emerald-400">1</span>
           </div>
-          <span className="text-xs font-bold text-white">Choose Operator Persona</span>
+          <span className="text-xs font-bold text-white">Choose Segment</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {PERSONAS.map((p) => (
@@ -969,10 +1172,61 @@ export default function TrainingSimulator() {
         </div>
       </div>
 
+      {/* Step 2: Role (only shown after segment selected) */}
+      {selectedPersona && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+              <span className="text-[10px] font-black text-emerald-400">2</span>
+            </div>
+            <span className="text-xs font-bold text-white">Choose Role</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {(['operational', 'strategic'] as RoleId[]).map((roleId) => {
+              const role = ROLES[selectedPersona][roleId];
+              const isSelected = selectedRole === roleId;
+              const colors = roleId === 'operational'
+                ? { bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', text: 'text-cyan-400', ring: 'ring-cyan-500/20' }
+                : { bg: 'bg-purple-500/10', border: 'border-purple-500/30', text: 'text-purple-400', ring: 'ring-purple-500/20' };
+
+              return (
+                <button
+                  key={roleId}
+                  onClick={() => setSelectedRole(roleId)}
+                  className={`text-left p-4 rounded-xl border transition-all duration-200 ${
+                    isSelected
+                      ? `${colors.bg} ${colors.border} ring-1 ${colors.ring}`
+                      : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-xs font-bold ${isSelected ? colors.text : 'text-white'}`}>{role.label}</span>
+                    <span className={`text-[10px] ${isSelected ? colors.text : 'text-slate-500'}`}>&middot; {role.title}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed mb-2">{role.description}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {role.concerns.map((c) => (
+                      <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-600">{c}</span>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {/* Persona description preview */}
+          <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+            <p className="text-[11px] text-slate-400 leading-relaxed italic">
+              &ldquo;{PERSONA_DESCRIPTIONS[selectedPersona][selectedRole]}&rdquo;
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Mode */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <span className="text-[10px] font-black text-emerald-400">2</span>
+            <span className="text-[10px] font-black text-emerald-400">3</span>
           </div>
           <span className="text-xs font-bold text-white">Select Mode</span>
         </div>
@@ -991,7 +1245,7 @@ export default function TrainingSimulator() {
               </div>
               <span className={`text-xs font-bold ${callMode === 'training' ? 'text-blue-400' : 'text-white'}`}>Training</span>
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">Guided script with talk tracks, objection responses, and tips displayed during the call</p>
+            <p className="text-[10px] text-slate-500 leading-relaxed">Guided script with role-aware talk tracks and tips during the call</p>
           </button>
           <button
             onClick={() => setCallMode('exam')}
@@ -1012,10 +1266,11 @@ export default function TrainingSimulator() {
         </div>
       </div>
 
+      {/* Step 4: Stage */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <span className="text-[10px] font-black text-emerald-400">3</span>
+            <span className="text-[10px] font-black text-emerald-400">4</span>
           </div>
           <span className="text-xs font-bold text-white">Select Sales Stage</span>
         </div>
@@ -1040,7 +1295,7 @@ export default function TrainingSimulator() {
           Start Practice Call
         </button>
         {(!selectedPersona || !selectedStage) && (
-          <p className="text-[10px] text-slate-600 text-center mt-2">Select a persona and stage to begin</p>
+          <p className="text-[10px] text-slate-600 text-center mt-2">Select a segment, role, and stage to begin</p>
         )}
       </div>
     </div>
@@ -1070,17 +1325,17 @@ function scoreFromTranscript(transcript: TranscriptLine[]): ScoreEntry[] {
   const allText = userLines.map((l) => l.message.toLowerCase()).join(' ');
 
   // Heuristic scoring from transcript content
-  const discoveryKeywords = ['how many', 'beds', 'units', 'portfolio', 'current', 'pain', 'challenge', 'system', 'pms', 'timeline', 'budget', 'decision'];
-  const discoveryScore = Math.min(100, 40 + discoveryKeywords.filter((k) => allText.includes(k)).length * 8);
+  const discoveryKeywords = ['how many', 'beds', 'units', 'portfolio', 'current', 'pain', 'challenge', 'system', 'pms', 'timeline', 'budget', 'decision', 'own', 'lease', 'investor', 'occupancy', 'cash flow', 'payment ops', 'ownership', 'guarantor', 'team', 'workflow', 'roi', 'cost'];
+  const discoveryScore = Math.min(100, 40 + discoveryKeywords.filter((k) => allText.includes(k)).length * 5);
 
-  const objectionKeywords = ['case stud', 'operator', 'live', 'tenant', 'chrome', 'extension', 'plugin', 'any pms', 'saving', 'replace', 'vendor'];
-  const objectionScore = Math.min(100, 30 + objectionKeywords.filter((k) => allText.includes(k)).length * 9);
+  const objectionKeywords = ['case stud', 'operator', 'live', 'tenant', 'chrome', 'extension', 'plugin', 'any pms', 'saving', 'replace', 'vendor', 'all-in', 'one platform', 'cheaper', 'stack', 'consolidat', 'homelet', 'housing hand', 'flatfair', 'gocard', 'champion', 'director', 'board'];
+  const objectionScore = Math.min(100, 30 + objectionKeywords.filter((k) => allText.includes(k)).length * 6);
 
-  const productKeywords = ['gateway', 'invoic', 'chrome', 'guarantee', 'deposit', 'credit build', 'fx', 'currency', 'tier', 'pricing', 'screen'];
-  const productScore = Math.min(100, 25 + productKeywords.filter((k) => allText.includes(k)).length * 10);
+  const productKeywords = ['gateway', 'invoic', 'chrome', 'guarantee', 'deposit', 'credit build', 'fx', 'currency', 'tier', 'pricing', 'screen', 'cover', 'on-time', 'payment', 'email alias', 'zero integration', 'renters rights'];
+  const productScore = Math.min(100, 25 + productKeywords.filter((k) => allText.includes(k)).length * 7);
 
-  const closeKeywords = ['next step', 'schedule', 'follow up', 'send', 'proposal', 'offer', 'pilot', 'trial', 'start', 'onboard', 'commitment'];
-  const closeScore = Math.min(100, 20 + closeKeywords.filter((k) => allText.includes(k)).length * 12);
+  const closeKeywords = ['next step', 'schedule', 'follow up', 'send', 'proposal', 'offer', 'pilot', 'trial', 'start', 'onboard', 'commitment', 'september', 'intake', 'case study', 'similar operator', 'roi', 'savings', 'introduce', 'proposal'];
+  const closeScore = Math.min(100, 20 + closeKeywords.filter((k) => allText.includes(k)).length * 8);
 
   // Talk-to-listen: user words vs AI words
   const userWords = userLines.reduce((sum, l) => sum + l.message.split(' ').length, 0);
