@@ -1070,9 +1070,23 @@ export default function TrainingSimulator() {
         </div>
 
         {/* Timer */}
-        <div className="text-4xl font-black text-white font-mono mb-2">
-          {formatTime(callSeconds)}
-        </div>
+        {(() => {
+          const MAX_SECONDS = 600; // 10 minutes
+          const remaining = Math.max(0, MAX_SECONDS - callSeconds);
+          const timerColor = remaining <= 60 ? 'text-red-400' : remaining <= 120 ? 'text-amber-400' : 'text-white';
+          return (
+            <>
+              <div className={`text-4xl font-black font-mono mb-1 ${timerColor}`}>
+                {formatTime(callSeconds)}
+              </div>
+              {callActive && remaining <= 120 && (
+                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${remaining <= 60 ? 'text-red-400/80' : 'text-amber-400/80'}`}>
+                  {formatTime(remaining)} remaining
+                </div>
+              )}
+            </>
+          );
+        })()}
         <p className="text-xs text-slate-500 mb-8">{stage.name}</p>
 
         {/* Status */}
@@ -1145,7 +1159,7 @@ export default function TrainingSimulator() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-black text-white">Training Simulator</h1>
-          <p className="text-xs text-slate-500 mt-1">Practice sales calls with AI operator personas</p>
+          <p className="text-xs text-slate-500 mt-1">Practice sales calls with AI operator personas &middot; <span className="text-slate-600">10 min per session</span></p>
         </div>
         {sessions.length > 0 && (
           <button
