@@ -476,7 +476,7 @@ export default function ProspectQualifier() {
                         return (
                           <div
                             key={q.key}
-                            className={`glass-card p-2 rounded-xl border bg-white/5 relative hover:z-[100] transition-all animate-in zoom-in duration-500 ${
+                            className={`glass-card p-2 rounded-xl border bg-white/5 relative z-0 hover:z-10 transition-[border-color] animate-in zoom-in duration-500 ${
                               isAnswered && pillarActive && section.id !== 'portfolio' ? section.accent : 'border-white/10'
                             }`}
                           >
