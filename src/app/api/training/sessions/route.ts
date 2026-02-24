@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTrainingSessions, addTrainingSession } from '@/lib/kv';
+import { getTrainingSessions, addTrainingSession, clearTrainingSessions } from '@/lib/kv';
 
 export async function GET() {
   try {
@@ -20,5 +20,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'Failed to save session' }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    await clearTrainingSessions();
+    return NextResponse.json({ ok: true, message: 'All sessions cleared' });
+  } catch {
+    return NextResponse.json({ error: 'Failed to clear sessions' }, { status: 500 });
   }
 }

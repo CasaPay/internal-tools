@@ -121,6 +121,12 @@ export async function getTrainingSessions(): Promise<unknown[]> {
   return JSON.parse(data);
 }
 
+export async function clearTrainingSessions(): Promise<void> {
+  const client = getRedis();
+  if (!client) throw new Error('Redis not configured');
+  await client.del(SESSIONS_KEY);
+}
+
 export async function addTrainingSession(session: unknown): Promise<void> {
   const client = getRedis();
   if (!client) throw new Error('Redis not configured');

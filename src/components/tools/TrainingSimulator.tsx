@@ -690,38 +690,23 @@ export default function TrainingSimulator() {
     if (selectedUser) localStorage.setItem('cp-training-user', selectedUser);
   }, [selectedUser]);
 
-  // Load sessions from server on mount (merge with any localStorage sessions)
+  // Load sessions from server on mount — server is source of truth
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/training/sessions');
         if (res.ok) {
           const serverSessions: Session[] = await res.json();
-          // Merge any localStorage sessions that aren't on the server yet
-          let local: Session[] = [];
-          try {
-            const stored = localStorage.getItem('cp-training-sessions');
-            if (stored) local = JSON.parse(stored);
-          } catch { /* ignore */ }
-
-          const serverIds = new Set(serverSessions.map((s) => s.id));
-          const localOnly = local.filter((s) => !serverIds.has(s.id));
-
-          // Upload local-only sessions to server
-          for (const s of localOnly) {
-            fetch('/api/training/sessions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(s),
-            }).catch(() => {});
-          }
-
-          const merged = [...localOnly, ...serverSessions]
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          setSessions(merged);
-          localStorage.setItem('cp-training-sessions', JSON.stringify(merged));
+          setSessions(serverSessions);
+          localStorage.setItem('cp-training-sessions', JSON.stringify(serverSessions));
         }
-      } catch { /* offline — keep empty until next load */ }
+      } catch {
+        // Offline fallback: load from localStorage
+        try {
+          const stored = localStorage.getItem('cp-training-sessions');
+          if (stored) setSessions(JSON.parse(stored));
+        } catch { /* ignore */ }
+      }
       setSessionsLoaded(true);
     })();
   }, []);
