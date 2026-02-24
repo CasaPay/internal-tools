@@ -654,13 +654,8 @@ export default function TrainingSimulator() {
   const [mode, setMode] = useState<'speaking' | 'listening'>('listening');
   const [muted, setMuted] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState<TranscriptLine[]>([]);
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem('cp-training-sessions');
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const conversationRef = useRef<Conversation | null>(null);
@@ -680,10 +675,41 @@ export default function TrainingSimulator() {
   useEffect(() => { selectedStageRef.current = selectedStage; }, [selectedStage]);
   useEffect(() => { callModeRef.current = callMode; }, [callMode]);
 
-  // Persist sessions
+  // Load sessions from server on mount (merge with any localStorage sessions)
   useEffect(() => {
-    localStorage.setItem('cp-training-sessions', JSON.stringify(sessions));
-  }, [sessions]);
+    (async () => {
+      try {
+        const res = await fetch('/api/training/sessions');
+        if (res.ok) {
+          const serverSessions: Session[] = await res.json();
+          // Merge any localStorage sessions that aren't on the server yet
+          let local: Session[] = [];
+          try {
+            const stored = localStorage.getItem('cp-training-sessions');
+            if (stored) local = JSON.parse(stored);
+          } catch { /* ignore */ }
+
+          const serverIds = new Set(serverSessions.map((s) => s.id));
+          const localOnly = local.filter((s) => !serverIds.has(s.id));
+
+          // Upload local-only sessions to server
+          for (const s of localOnly) {
+            fetch('/api/training/sessions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(s),
+            }).catch(() => {});
+          }
+
+          const merged = [...localOnly, ...serverSessions]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setSessions(merged);
+          localStorage.setItem('cp-training-sessions', JSON.stringify(merged));
+        }
+      } catch { /* offline — keep empty until next load */ }
+      setSessionsLoaded(true);
+    })();
+  }, []);
 
   // Call timer
   useEffect(() => {
@@ -756,7 +782,17 @@ export default function TrainingSimulator() {
       transcript,
     };
 
-    setSessions((prev) => [session, ...prev]);
+    setSessions((prev) => {
+      const updated = [session, ...prev];
+      localStorage.setItem('cp-training-sessions', JSON.stringify(updated));
+      return updated;
+    });
+    // Persist to server so all reps can see it
+    fetch('/api/training/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(session),
+    }).catch(() => {});
     setView('scorecard');
     finishingRef.current = false;
   }, []);

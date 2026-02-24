@@ -108,3 +108,25 @@ export async function setRoadmapState(state: RoadmapState): Promise<void> {
   if (!client) throw new Error('Redis not configured');
   await client.set(ROADMAP_KEY, JSON.stringify(state));
 }
+
+// ── Training Sessions ───────────────────────────────────────────────────────
+
+const SESSIONS_KEY = 'prospector:training-sessions';
+
+export async function getTrainingSessions(): Promise<unknown[]> {
+  const client = getRedis();
+  if (!client) return [];
+  const data = await client.get(SESSIONS_KEY);
+  if (!data) return [];
+  return JSON.parse(data);
+}
+
+export async function addTrainingSession(session: unknown): Promise<void> {
+  const client = getRedis();
+  if (!client) throw new Error('Redis not configured');
+  const existing = await getTrainingSessions();
+  existing.unshift(session);
+  // Keep last 200 sessions to avoid unbounded growth
+  if (existing.length > 200) existing.length = 200;
+  await client.set(SESSIONS_KEY, JSON.stringify(existing));
+}
