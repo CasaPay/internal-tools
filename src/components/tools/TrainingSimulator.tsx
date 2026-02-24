@@ -621,8 +621,9 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
 
   const toggleCheck = (key: string) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const stepCheckedCount = (i: number) => cards[i].tips.filter((_, j) => checked[`${i}-${j}`]).length;
-  const stepComplete = (i: number) => stepCheckedCount(i) === cards[i].tips.length;
+  const checkableTips = (i: number) => cards[i].tips.filter((t) => !t.startsWith('Ask:'));
+  const stepCheckedCount = (i: number) => checkableTips(i).filter((_, j) => checked[`${i}-c${j}`]).length;
+  const stepComplete = (i: number) => { const c = checkableTips(i); return c.length > 0 ? stepCheckedCount(i) === c.length : false; };
 
   const goNext = () => {
     if (activeStep < cards.length - 1) {
@@ -696,54 +697,57 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
                 <span className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
                   {card.title}
                 </span>
-                {!isActive && (
+                {!isActive && checkableTips(i).length > 0 && (
                   <span className="text-[10px] text-slate-600 ml-2">
-                    {stepCheckedCount(i)}/{card.tips.length}
+                    {stepCheckedCount(i)}/{checkableTips(i).length}
                   </span>
                 )}
               </div>
             </button>
 
             {/* Tips — only shown for active step */}
-            {isActive && (
+            {isActive && (() => {
+              const askTips = card.tips.filter((t) => t.startsWith('Ask:'));
+              const regularTips = card.tips.filter((t) => !t.startsWith('Ask:'));
+              return (
               <div className="px-4 pb-4 space-y-2">
-                {card.tips.map((tip, j) => {
-                  const key = `${i}-${j}`;
+                {/* "Say this" prompts — always first, no checkbox */}
+                {askTips.map((tip, j) => (
+                  <div
+                    key={`ask-${j}`}
+                    className="w-full text-left p-3 rounded-lg bg-blue-500/[0.06] border border-blue-500/20"
+                  >
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-1">Say this</span>
+                    <span className="text-sm leading-relaxed text-blue-200">
+                      {tip.replace(/^Ask:\s*/, '')}
+                    </span>
+                  </div>
+                ))}
+
+                {/* Checkable tips */}
+                {regularTips.map((tip, j) => {
+                  const key = `${i}-c${j}`;
                   const isChecked = checked[key];
-                  const isAsk = tip.startsWith('Ask:');
                   return (
                     <button
-                      key={j}
+                      key={`tip-${j}`}
                       onClick={() => toggleCheck(key)}
                       className={`w-full text-left flex gap-3 p-2.5 rounded-lg transition-all ${
                         isChecked
                           ? 'bg-emerald-500/5 opacity-50'
-                          : isAsk
-                            ? 'bg-blue-500/[0.06] border border-blue-500/20 hover:bg-blue-500/[0.1]'
-                            : 'bg-white/[0.02] hover:bg-white/[0.04]'
+                          : 'bg-white/[0.02] hover:bg-white/[0.04]'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
                         isChecked
                           ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                          : isAsk
-                            ? 'border-blue-500/40 text-transparent'
-                            : 'border-white/20 text-transparent'
+                          : 'border-white/20 text-transparent'
                       }`}>
                         <span className="text-[10px]">{isChecked ? '\u2713' : ''}</span>
                       </div>
-                      {isAsk && !isChecked ? (
-                        <div className="flex-1">
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-0.5">Say this</span>
-                          <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-blue-200'}`}>
-                            {tip.replace(/^Ask:\s*/, '')}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                          {isAsk ? tip.replace(/^Ask:\s*/, '') : tip}
-                        </span>
-                      )}
+                      <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                        {tip}
+                      </span>
                     </button>
                   );
                 })}
@@ -759,7 +763,8 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
                   </button>
                 )}
               </div>
-            )}
+              );
+            })()}
           </div>
         );
       })}
