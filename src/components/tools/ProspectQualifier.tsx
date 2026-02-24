@@ -546,26 +546,26 @@ export default function ProspectQualifier() {
 
         const vendorCostMonthly = answers.vendorStack === '4+' ? unitCount * 8 : answers.vendorStack === '2-3' ? unitCount * 5 : unitCount * 2;
 
-        // Pain-specific narratives
+        // Pain-specific narratives (internal — briefing the rep)
         const narratives: Record<PillarId, string> = {
-          occupancy: `You're losing approximately €${vacancyLoss.toLocaleString()}/year to vacant units. With ${answers.voidDuration === '21+' ? '21+' : answers.voidDuration === '7-21' ? '7–21' : '<7'} day average voids and ${answers.occupancyRate === '<80' ? 'sub-80%' : answers.occupancyRate === '80-90' ? '80–90%' : '90%+'} occupancy, every empty day costs you €${Math.round(avgRent / 30)}/unit. ${answers.tenantMix === 'international' ? 'International tenants can\'t access your properties due to deposit and guarantor barriers.' : ''}`,
-          paymentOps: `You're running ${answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1'} separate systems to handle what should be one workflow. Manual collection costs your team ~${adminHours}h/month in reconciliation and chasing. ${answers.depositHandling === 'dps' ? 'Deposit compliance alone ties up capital in government schemes.' : ''}`,
-          cashFlow: `With ${answers.latePaymentRate === '15+' ? '15%+' : answers.latePaymentRate === '5-15' ? '5–15%' : '<5%'} late payments and ${answers.cashFlowPressure === 'significant' ? 'significant cash flow pressure' : answers.cashFlowPressure === 'some' ? 'seasonal cash flow gaps' : 'manageable cash flow'}, you're giving tenants interest-free credit while your obligations don't wait. That's approximately €${cashFlowDrag.toLocaleString()}/year in cash flow drag.`,
+          occupancy: `They're losing ~€${vacancyLoss.toLocaleString()}/year to vacant units. ${answers.voidDuration === '21+' ? '21+' : answers.voidDuration === '7-21' ? '7–21' : '<7'} day average voids, ${answers.occupancyRate === '<80' ? 'sub-80%' : answers.occupancyRate === '80-90' ? '80–90%' : '90%+'} occupancy — every empty day costs €${Math.round(avgRent / 30)}/unit. ${answers.tenantMix === 'international' ? 'Heavy international tenant mix means deposit/guarantor barriers are blocking conversions.' : ''}`,
+          paymentOps: `Running ${answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1'} separate systems for what should be one workflow. ~${adminHours}h/month burned on reconciliation and chasing. ${answers.depositHandling === 'dps' ? 'DPS deposit compliance is also tying up their capital.' : ''}`,
+          cashFlow: `${answers.latePaymentRate === '15+' ? '15%+' : answers.latePaymentRate === '5-15' ? '5–15%' : '<5%'} late payments, ${answers.cashFlowPressure === 'significant' ? 'significant cash flow pressure' : answers.cashFlowPressure === 'some' ? 'seasonal cash flow gaps' : 'manageable cash flow'}. They're effectively giving tenants interest-free credit — ~€${cashFlowDrag.toLocaleString()}/year in cash flow drag.`,
         };
 
         const impactCards: Record<PillarId, { label: string; val: string; desc: string }[]> = {
           occupancy: [
-            { label: 'Vacancy Cost', val: `€${vacancyLoss.toLocaleString()}/yr`, desc: 'Lost revenue from empty units' },
+            { label: 'Vacancy Cost', val: `€${vacancyLoss.toLocaleString()}/yr`, desc: 'Revenue lost to empty units' },
             { label: 'Void Days', val: `${voidDays} avg`, desc: `€${Math.round(avgRent / 30)}/unit/day lost` },
-            { label: 'Conversion Risk', val: answers.tenantMix === 'international' ? 'High' : 'Moderate', desc: 'Deposit barriers blocking potential tenants' },
+            { label: 'Conversion Risk', val: answers.tenantMix === 'international' ? 'High' : 'Moderate', desc: 'Deposit barriers blocking applicants' },
           ],
           paymentOps: [
-            { label: 'Admin Hours/Mo', val: `${adminHours}h`, desc: 'Manual reconciliation & vendor management' },
+            { label: 'Admin Hours/Mo', val: `${adminHours}h`, desc: 'Reconciliation & vendor management' },
             { label: 'Vendor Costs', val: `€${vendorCostMonthly.toLocaleString()}/mo`, desc: `${answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1'} platform(s) × per-unit fees` },
-            { label: 'Error Risk', val: answers.collectionMethod === 'manual' ? 'High' : 'Moderate', desc: 'Manual processes = reconciliation gaps' },
+            { label: 'Error Risk', val: answers.collectionMethod === 'manual' ? 'High' : 'Moderate', desc: 'Manual process = reconciliation gaps' },
           ],
           cashFlow: [
-            { label: 'Cash Flow Drag', val: `€${cashFlowDrag.toLocaleString()}/yr`, desc: 'Cost of late payments (interest + admin)' },
+            { label: 'Cash Flow Drag', val: `€${cashFlowDrag.toLocaleString()}/yr`, desc: 'Late payment cost (interest + admin)' },
             { label: 'Late Rate', val: `${Math.round(lateRate * 100)}%`, desc: 'Tenants paying after due date' },
             { label: 'Obligation Risk', val: answers.ownershipModel === 'lease' ? 'Critical' : answers.cashFlowPressure === 'significant' ? 'High' : 'Moderate', desc: 'Gap between inflows and fixed outflows' },
           ],
@@ -583,7 +583,7 @@ export default function ProspectQualifier() {
                 <span className={`text-[10px] font-black uppercase tracking-widest ${PILLAR_COLORS[primary].text}`}>{PILLAR_LABELS[primary]}</span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
-                Your #1 challenge: {PILLAR_LABELS[primary]}
+                Their #1 pain: {PILLAR_LABELS[primary]}
               </h2>
               <p className="text-sm text-slate-300 leading-relaxed max-w-3xl font-medium">
                 {narratives[primary]}
@@ -597,7 +597,7 @@ export default function ProspectQualifier() {
                 <div>
                   <p className="text-sm font-bold text-rose-300">Structural Cash Flow Risk</p>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    As an operator leasing from investors, your cash flow risk is structurally higher — you must pay owners on the 1st regardless of when tenants pay. This makes guaranteed payouts critical, not optional.
+                    This operator leases from investors — cash flow risk is structurally higher. They must pay owners on the 1st regardless of when tenants pay. Guaranteed payouts are critical, not optional.
                   </p>
                 </div>
               </div>
