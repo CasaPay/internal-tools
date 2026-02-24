@@ -69,7 +69,8 @@ const QUESTIONS: QuestionDef[] = [
     options: [
       { id: '<100', label: '< 100 units' },
       { id: '100-500', label: '100 – 500 units' },
-      { id: '500+', label: '500+ units' },
+      { id: '500-2000', label: '500 – 2,000 units' },
+      { id: '2000+', label: '2,000+ units' },
     ]
   },
   {
@@ -227,6 +228,10 @@ function computePillarScores(answers: Record<string, string>): PillarScores {
   else if (answers.depositHandling === 'large') paymentOps += 15;
   else if (answers.depositHandling === 'third-party') paymentOps += 10;
   if (answers.ownershipModel === 'manage') paymentOps += 10;
+  // Portfolio scale amplifies ops pain
+  if (answers.portfolioSize === '2000+') paymentOps += 15;
+  else if (answers.portfolioSize === '500-2000') paymentOps += 10;
+  else if (answers.portfolioSize === '100-500') paymentOps += 5;
 
   // Cash Flow score
   let cashFlow = 0;
@@ -236,6 +241,9 @@ function computePillarScores(answers: Record<string, string>): PillarScores {
   else if (answers.cashFlowPressure === 'some') cashFlow += 20;
   if (answers.ownershipModel === 'lease') cashFlow += 20;
   else if (answers.ownershipModel === 'hybrid') cashFlow += 10;
+  // Larger portfolio = more capital at risk
+  if (answers.portfolioSize === '2000+') cashFlow += 10;
+  else if (answers.portfolioSize === '500-2000') cashFlow += 5;
 
   // Primary pain — tie-break: cashFlow > paymentOps > occupancy
   let primary: PillarId = 'cashFlow';
@@ -355,7 +363,7 @@ export default function ProspectQualifier() {
 
   const pillarScores = useMemo(() => computePillarScores(answers), [answers]);
 
-  const scale = answers.portfolioSize === '500+' ? 10 : answers.portfolioSize === '100-500' ? 3 : 1;
+  const scale = answers.portfolioSize === '2000+' ? 30 : answers.portfolioSize === '500-2000' ? 10 : answers.portfolioSize === '100-500' ? 3 : 1;
   const avgRent = 850; // EUR/month assumed average
 
   const renderStep = () => {
@@ -520,7 +528,7 @@ export default function ProspectQualifier() {
 
       case 1: {
         const primary = pillarScores.primary;
-        const unitCount = answers.portfolioSize === '500+' ? 750 : answers.portfolioSize === '100-500' ? 300 : 80;
+        const unitCount = answers.portfolioSize === '2000+' ? 3000 : answers.portfolioSize === '500-2000' ? 1000 : answers.portfolioSize === '100-500' ? 300 : 80;
 
         // Revenue impact calculations
         const voidDays = answers.voidDuration === '21+' ? 28 : answers.voidDuration === '7-21' ? 14 : 5;
@@ -531,7 +539,7 @@ export default function ProspectQualifier() {
         const lateRate = answers.latePaymentRate === '15+' ? 0.20 : answers.latePaymentRate === '5-15' ? 0.10 : 0.03;
         const cashFlowDrag = Math.round(unitCount * avgRent * lateRate * 12 * 0.15); // 15% cost of late = interest + admin
 
-        const adminHoursBase = answers.portfolioSize === '500+' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20;
+        const adminHoursBase = answers.portfolioSize === '2000+' ? 400 : answers.portfolioSize === '500-2000' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20;
         const manualMultiplier = answers.collectionMethod === 'manual' ? 1.5 : answers.collectionMethod === 'semi' ? 1.2 : 1;
         const vendorMultiplier = answers.vendorStack === '4+' ? 1.3 : answers.vendorStack === '2-3' ? 1.1 : 1;
         const adminHours = Math.round(adminHoursBase * manualMultiplier * vendorMultiplier);
@@ -612,7 +620,7 @@ export default function ProspectQualifier() {
       case 2: {
         const primary = pillarScores.primary;
         const tier = TIER_INFO[primary];
-        const unitCount = answers.portfolioSize === '500+' ? 750 : answers.portfolioSize === '100-500' ? 300 : 80;
+        const unitCount = answers.portfolioSize === '2000+' ? 3000 : answers.portfolioSize === '500-2000' ? 1000 : answers.portfolioSize === '100-500' ? 300 : 80;
 
         const casapayRate = primary === 'cashFlow' ? 0.025 : primary === 'occupancy' ? 0.015 : 0.01;
         const casapayCost = Math.round(unitCount * avgRent * casapayRate);
@@ -623,7 +631,7 @@ export default function ProspectQualifier() {
         const voidDays = answers.voidDuration === '21+' ? 28 : answers.voidDuration === '7-21' ? 14 : 5;
         const vacancyLoss = Math.round(unitCount * ((100 - occupancyPct) / 100) * avgRent * 12);
         const vendorCount = answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1';
-        const adminHoursBase = answers.portfolioSize === '500+' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20;
+        const adminHoursBase = answers.portfolioSize === '2000+' ? 400 : answers.portfolioSize === '500-2000' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20;
         const manualMult = answers.collectionMethod === 'manual' ? 1.5 : answers.collectionMethod === 'semi' ? 1.2 : 1;
         const vendorMult = answers.vendorStack === '4+' ? 1.3 : answers.vendorStack === '2-3' ? 1.1 : 1;
         const adminHours = Math.round(adminHoursBase * manualMult * vendorMult);
