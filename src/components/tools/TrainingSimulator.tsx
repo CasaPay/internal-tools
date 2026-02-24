@@ -64,7 +64,7 @@ interface Session {
   userName?: string;
 }
 
-const USERS = ['Risto', 'Illimar', 'Angela'] as const;
+const USERS = ['Risto', 'Illimar', 'Angela', 'Mart', 'Alisha', 'Gui', 'Manav'] as const;
 type UserName = typeof USERS[number];
 
 // ── Data ───────────────────────────────────────────────────────────────────
