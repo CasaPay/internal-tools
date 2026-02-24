@@ -608,37 +608,140 @@ function LiveTranscript({ lines }: { lines: TranscriptLine[] }) {
 function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) {
   const allCards = STAGE_SCRIPTS[stageId];
   const cards = allCards.filter((c) => !c.roleFilter || c.roleFilter === roleId);
-  const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
+  const [activeStep, setActiveStep] = useState(0);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const activeRef = useRef<HTMLDivElement>(null);
 
-  const toggle = (i: number) => setCollapsed((prev) => ({ ...prev, [i]: !prev[i] }));
+  const toggleCheck = (key: string) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const stepCheckedCount = (i: number) => cards[i].tips.filter((_, j) => checked[`${i}-${j}`]).length;
+  const stepComplete = (i: number) => stepCheckedCount(i) === cards[i].tips.length;
+
+  const goNext = () => {
+    if (activeStep < cards.length - 1) {
+      setActiveStep(activeStep + 1);
+      setTimeout(() => activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    }
+  };
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar space-y-5 p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <BookOpen size={22} className="text-emerald-400" />
-        <span className="text-lg font-black text-emerald-400 uppercase tracking-widest">Script</span>
-      </div>
-      {cards.map((card, i) => (
-        <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
-          <button
-            onClick={() => toggle(i)}
-            className="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
-          >
-            <span className="text-lg font-bold text-slate-100">{card.title}</span>
-            <ChevronRight size={18} className={`text-slate-600 transition-transform ${collapsed[i] ? '' : 'rotate-90'}`} />
-          </button>
-          {!collapsed[i] && (
-            <div className="px-5 pb-5 space-y-3">
-              {card.tips.map((tip, j) => (
-                <div key={j} className="flex gap-3 text-base leading-relaxed text-slate-300">
-                  <span className="text-emerald-500/60 mt-1 shrink-0">•</span>
-                  <span>{tip}</span>
-                </div>
-              ))}
-            </div>
-          )}
+    <div className="h-full overflow-y-auto custom-scrollbar p-5 space-y-3">
+      {/* Header with progress */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <BookOpen size={16} className="text-emerald-400" />
+          <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Script</span>
         </div>
-      ))}
+        <span className="text-[10px] text-slate-600 font-bold">
+          Step {activeStep + 1}/{cards.length}
+        </span>
+      </div>
+
+      {/* Step progress bar */}
+      <div className="flex gap-1">
+        {cards.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+              stepComplete(i) ? 'bg-emerald-500' : i === activeStep ? 'bg-emerald-500/40' : 'bg-white/5'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Steps */}
+      {cards.map((card, i) => {
+        const isActive = i === activeStep;
+        const isDone = stepComplete(i);
+        const isPast = i < activeStep;
+
+        return (
+          <div
+            key={i}
+            ref={isActive ? activeRef : undefined}
+            className={`rounded-xl border overflow-hidden transition-all duration-300 ${
+              isActive
+                ? 'border-emerald-500/30 bg-emerald-500/[0.03] ring-1 ring-emerald-500/10'
+                : isDone || isPast
+                  ? 'border-white/5 bg-white/[0.01] opacity-50'
+                  : 'border-white/5 bg-white/[0.01] opacity-30'
+            }`}
+          >
+            {/* Step header — always clickable */}
+            <button
+              onClick={() => {
+                setActiveStep(i);
+                setTimeout(() => activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+              }}
+              className="w-full text-left px-4 py-3 flex items-center gap-3"
+            >
+              {/* Step number / check */}
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black ${
+                isDone
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : isActive
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-white/5 text-slate-600 border border-white/10'
+              }`}>
+                {isDone ? '\u2713' : i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
+                  {card.title}
+                </span>
+                {!isActive && (
+                  <span className="text-[10px] text-slate-600 ml-2">
+                    {stepCheckedCount(i)}/{card.tips.length}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {/* Tips — only shown for active step */}
+            {isActive && (
+              <div className="px-4 pb-4 space-y-2">
+                {card.tips.map((tip, j) => {
+                  const key = `${i}-${j}`;
+                  const isChecked = checked[key];
+                  return (
+                    <button
+                      key={j}
+                      onClick={() => toggleCheck(key)}
+                      className={`w-full text-left flex gap-3 p-2.5 rounded-lg transition-all ${
+                        isChecked
+                          ? 'bg-emerald-500/5 opacity-50'
+                          : 'bg-white/[0.02] hover:bg-white/[0.04]'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                        isChecked
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                          : 'border-white/20 text-transparent'
+                      }`}>
+                        <span className="text-[10px]">{isChecked ? '\u2713' : ''}</span>
+                      </div>
+                      <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                        {tip}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {/* Next step button */}
+                {i < cards.length - 1 && (
+                  <button
+                    onClick={goNext}
+                    className="w-full mt-2 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    Next: {cards[i + 1].title}
+                    <ChevronRight size={14} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
