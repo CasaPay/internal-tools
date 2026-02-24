@@ -308,11 +308,18 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
       '🔄 HYBRID → Both pains. Own some (occupancy), lease others (cash flow) → COVER → ON-TIME',
       '📋 PROPERTY MANAGER → Payment ops pain. Efficient systems for investor reporting → PAYMENTS tier',
     ]},
-    { title: 'Adjust for Role', tips: [
-      'If talking to OPERATIONAL: focus on workflow questions, team size, current daily process, peak season timing',
-      'If talking to STRATEGIC: focus on cost structure, portfolio size, vendor contracts, board reporting needs, decision timeline',
-      'Operational won\'t know ROI numbers — don\'t ask. Strategic won\'t know daily workflow — don\'t dwell.',
-    ], roleFilter: undefined },
+    { title: 'Adjust for Operational Role', roleFilter: 'operational', tips: [
+      'Focus on: workflow questions, team size, current daily process, peak season timing',
+      'They won\'t know ROI numbers or budget — don\'t ask',
+      'Ask: "How many people on your team handle rent collection day-to-day?"',
+      'Ask: "What does your process look like when a tenant is late?"',
+    ]},
+    { title: 'Adjust for Strategic Role', roleFilter: 'strategic', tips: [
+      'Focus on: cost structure, portfolio size, vendor contracts, board reporting needs, decision timeline',
+      'They won\'t know daily workflow details — don\'t dwell',
+      'Ask: "What does your current vendor stack cost you annually across all properties?"',
+      'Ask: "Who else would need to sign off on a decision like this?"',
+    ]},
     { title: 'Key Rule', tips: [
       'Listen more than you talk (40-60% ratio)',
       'Don\'t pitch yet — understand their situation first',
@@ -703,6 +710,7 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
                 {card.tips.map((tip, j) => {
                   const key = `${i}-${j}`;
                   const isChecked = checked[key];
+                  const isAsk = tip.startsWith('Ask:');
                   return (
                     <button
                       key={j}
@@ -710,19 +718,32 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
                       className={`w-full text-left flex gap-3 p-2.5 rounded-lg transition-all ${
                         isChecked
                           ? 'bg-emerald-500/5 opacity-50'
-                          : 'bg-white/[0.02] hover:bg-white/[0.04]'
+                          : isAsk
+                            ? 'bg-blue-500/[0.06] border border-blue-500/20 hover:bg-blue-500/[0.1]'
+                            : 'bg-white/[0.02] hover:bg-white/[0.04]'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
                         isChecked
                           ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                          : 'border-white/20 text-transparent'
+                          : isAsk
+                            ? 'border-blue-500/40 text-transparent'
+                            : 'border-white/20 text-transparent'
                       }`}>
                         <span className="text-[10px]">{isChecked ? '\u2713' : ''}</span>
                       </div>
-                      <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                        {tip}
-                      </span>
+                      {isAsk && !isChecked ? (
+                        <div className="flex-1">
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-0.5">Say this</span>
+                          <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-blue-200'}`}>
+                            {tip.replace(/^Ask:\s*/, '')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                          {isAsk ? tip.replace(/^Ask:\s*/, '') : tip}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
