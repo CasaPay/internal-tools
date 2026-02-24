@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import {
-  ChevronRight, ChevronLeft, BarChart3, ShieldCheck,
+  ChevronRight, ChevronLeft, ChevronDown, BarChart3, ShieldCheck,
   AlertCircle, TrendingDown, Wallet, Users2,
   CreditCard, Zap, LayoutGrid, Info,
   Home, Clock, Building2, Layers, Banknote,
@@ -329,6 +329,7 @@ const TIER_INFO: Record<PillarId, { name: string; rate: string; tagline: string;
 export default function ProspectQualifier() {
   const [currentStep, setCurrentStep] = useState(0);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [talkTrackOpen, setTalkTrackOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({
     portfolioSize: '',
     ownershipModel: '',
@@ -613,80 +614,217 @@ export default function ProspectQualifier() {
         const tier = TIER_INFO[primary];
         const unitCount = answers.portfolioSize === '500+' ? 750 : answers.portfolioSize === '100-500' ? 300 : 80;
 
-        // Savings calculation
-        const currentMultiVendorCost = answers.vendorStack === '4+' ? unitCount * 8 : answers.vendorStack === '2-3' ? unitCount * 5 : unitCount * 3;
         const casapayRate = primary === 'cashFlow' ? 0.025 : primary === 'occupancy' ? 0.015 : 0.01;
         const casapayCost = Math.round(unitCount * avgRent * casapayRate);
-        const monthlySaving = Math.max(0, currentMultiVendorCost - casapayCost);
+        const depositCapital = primary !== 'paymentOps' ? Math.round(unitCount * avgRent * 1.5) : 0;
 
-        // Deposit capital released (for COVER and ON-TIME)
-        const depositCapital = primary !== 'paymentOps' ? Math.round(unitCount * avgRent * 1.5) : 0; // ~1.5 months avg deposit
+        // Talk track calculations
+        const occupancyPct = answers.occupancyRate === '<80' ? 75 : answers.occupancyRate === '80-90' ? 85 : 94;
+        const voidDays = answers.voidDuration === '21+' ? 28 : answers.voidDuration === '7-21' ? 14 : 5;
+        const vacancyLoss = Math.round(unitCount * ((100 - occupancyPct) / 100) * avgRent * 12);
+        const vendorCount = answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1';
+        const adminHoursBase = answers.portfolioSize === '500+' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20;
+        const manualMult = answers.collectionMethod === 'manual' ? 1.5 : answers.collectionMethod === 'semi' ? 1.2 : 1;
+        const vendorMult = answers.vendorStack === '4+' ? 1.3 : answers.vendorStack === '2-3' ? 1.1 : 1;
+        const adminHours = Math.round(adminHoursBase * manualMult * vendorMult);
+        const lateRatePct = answers.latePaymentRate === '15+' ? 20 : answers.latePaymentRate === '5-15' ? 10 : 3;
+        const cashFlowDrag = Math.round(unitCount * avgRent * (lateRatePct / 100) * 12 * 0.15);
+        const monthlyRent = unitCount * avgRent;
+
+        // "Today" column mappings
+        const todayCollection = answers.collectionMethod === 'manual' ? 'Manual bank transfers' : answers.collectionMethod === 'semi' ? 'GoCardless / DD' : 'Stripe / portal';
+        const todayVendors = answers.vendorStack === '4+' ? '4+ separate platforms' : answers.vendorStack === '2-3' ? '2–3 vendors' : 'Single vendor';
+        const todayDeposits = answers.depositHandling === 'dps' ? 'DPS (capital locked)' : answers.depositHandling === 'large' ? '3+ months upfront' : answers.depositHandling === 'third-party' ? 'Flatfair / Housing Hand' : 'No deposits';
+        const todayLate = answers.latePaymentRate === '<5' ? '<5% — minimal' : answers.latePaymentRate === '5-15' ? '5–15% — regular chasing' : '15%+ — constant collections';
+
+        // "With CasaPay" column mappings (tier-dependent)
+        const withDeposit = primary === 'paymentOps' ? 'Managed digitally' : 'Eliminated';
+        const withGuarantee = primary === 'paymentOps' ? 'Not included' : primary === 'occupancy' ? 'Covered if default' : 'Paid on the 1st regardless';
+        const withLate = primary === 'paymentOps' ? 'Automated reminders' : primary === 'occupancy' ? 'Automated + covered' : 'Irrelevant — you\'re paid on time';
+
+        // Value props per tier
+        const operatorProps: Record<PillarId, string[]> = {
+          paymentOps: ['Eliminate admin overhead', `One platform replaces ${vendorCount} vendors`, 'Automated reconciliation', 'Screening built in'],
+          occupancy: ['Fill units faster (zero deposit)', 'Access international/student market', 'Covered if tenant defaults', 'One platform for everything'],
+          cashFlow: ['Guaranteed cash flow on the 1st', 'Pay investors on time every time', 'Eliminate receivables risk', 'Predictable revenue'],
+        };
+
+        const tenantProps: Record<PillarId, string[]> = {
+          paymentOps: ['Pay rent digitally', 'Clear payment history', 'Multi-currency'],
+          occupancy: ['No deposit required', 'Build credit through rent', 'Faster move-in'],
+          cashFlow: ['No deposit', 'Build credit', 'Flexible payment timing', 'Better relationship with landlord'],
+        };
+
+        // Talk track content
+        const openingLines: Record<PillarId, string> = {
+          occupancy: `You told us occupancy is at ${occupancyPct}% with ${voidDays}-day voids — that's roughly €${vacancyLoss.toLocaleString()}/year in lost revenue.`,
+          paymentOps: `You're running ${vendorCount} platforms to do what should be one workflow — that's ~${adminHours}h/month in admin alone.`,
+          cashFlow: `With ${lateRatePct}% late payments${answers.ownershipModel === 'lease' ? ' and investor obligations' : ''}, you're giving tenants interest-free credit worth ~€${cashFlowDrag.toLocaleString()}/year.`,
+        };
+
+        const pitchLines: Record<PillarId, string> = {
+          occupancy: 'COVER eliminates deposits entirely — that\'s the #1 barrier for international tenants. Same guarantee coverage, zero friction for the tenant.',
+          paymentOps: `At 1%, we replace your entire stack. One login, automated collection, screening included.`,
+          cashFlow: 'ON-TIME means you get paid on the 1st, full stop. Doesn\'t matter if the tenant pays late — we cover the gap. For an operator leasing from investors, that\'s not a nice-to-have.',
+        };
+
+        const objections: Record<PillarId, string[]> = {
+          paymentOps: [
+            'If they say "we already have GoCardless" → "GoCardless handles collection, but you still need separate screening, deposits, and guarantee. We\'re all-in at 1%."',
+            'If they say "switching costs are high" → "We migrate in weeks, not months. White-label means tenants see your brand, not ours."',
+          ],
+          occupancy: [
+            'If they say "deposits protect us" → "DPS locks your capital and deters international tenants. Our guarantee covers more and costs nothing upfront."',
+            'If they say "our occupancy is fine" → "Fine isn\'t full. Every day a unit sits empty at €' + Math.round(avgRent / 30) + '/day, that\'s money left on the table."',
+          ],
+          cashFlow: [
+            `If they say "2.5% is expensive" → "Run the numbers: ${lateRatePct}% late payments on €${monthlyRent.toLocaleString()}/mo = €${cashFlowDrag.toLocaleString()}/year in cash flow drag. ON-TIME costs €${casapayCost.toLocaleString()}/mo but guarantees €${monthlyRent.toLocaleString()}/mo lands on time."`,
+            'If they say "we can chase tenants ourselves" → "You can, at ' + adminHours + 'h/month in admin. ON-TIME means zero chasing — we guarantee the payout."',
+          ],
+        };
+
+        const closingLine = `Based on your ${unitCount} units at ~€${avgRent}/mo, that's €${casapayCost.toLocaleString()}/mo all-in. Want me to set up a pilot?`;
 
         return (
-          <div className="flex flex-col items-center justify-center h-full space-y-10 animate-in fade-in slide-in-from-top-4 duration-700">
-            {/* Tier recommendation hero */}
-            <div className="text-center space-y-4 max-w-2xl">
-              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${PILLAR_COLORS[primary].bg} ${PILLAR_COLORS[primary].border} border mb-2`}>
-                <ShieldCheck size={14} className={PILLAR_COLORS[primary].text} />
-                <span className={`text-[10px] font-black uppercase tracking-widest ${PILLAR_COLORS[primary].text}`}>Recommended Tier</span>
+          <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
+            {/* 1. Tier Recommendation Banner */}
+            <div className={`p-5 rounded-2xl border ${PILLAR_COLORS[primary].border} ${PILLAR_COLORS[primary].bg}`}>
+              <div className="flex items-center gap-3">
+                <ShieldCheck size={20} className={PILLAR_COLORS[primary].text} />
+                <div>
+                  <p className="text-lg font-black text-white">
+                    Recommended: {tier.name} <span className="text-slate-400 font-bold">({tier.rate})</span>
+                    <span className="text-sm font-medium text-slate-400 ml-2">— {tier.tagline}</span>
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Based on <span className={PILLAR_COLORS[primary].text}>{PILLAR_LABELS[primary].toLowerCase()}</span>
+                    {answers.ownershipModel && <> + <span className="text-slate-300">{OWNERSHIP_LABELS[answers.ownershipModel]?.toLowerCase()}</span> model</>}
+                  </p>
+                </div>
               </div>
-              <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
-                {tier.name} <span className="text-slate-500">({tier.rate})</span>
-              </h2>
-              <p className="text-slate-400 text-lg font-medium leading-relaxed">
-                {tier.tagline}
-              </p>
-              <p className="text-slate-500 text-sm">
-                Based on your <span className={PILLAR_COLORS[primary].text}>{PILLAR_LABELS[primary].toLowerCase()}</span>
-                {answers.ownershipModel && <> and <span className="text-slate-300">{OWNERSHIP_LABELS[answers.ownershipModel]?.toLowerCase()}</span> model</>}
-              </p>
-              {answers.portfolioSize === '500+' && (
-                <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest">Enterprise pricing available for 500+ units</p>
-              )}
             </div>
 
-            {/* What's included */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-              {tier.features.map((feature, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all hover:-translate-y-1 group">
-                  <div className={`p-3 bg-white/5 rounded-2xl w-fit mb-4 group-hover:scale-110 transition-transform ${PILLAR_COLORS[primary].text}`}>
-                    {i === 0 ? <Zap size={24} /> : i === 1 ? <ShieldCheck size={24} /> : i === 2 ? <CreditCard size={24} /> : <BarChart3 size={24} />}
+            {/* 2. Before / After Comparison Table */}
+            <div className="rounded-2xl border border-white/10 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-white/5">
+                    <th className="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest p-3 w-1/4">Dimension</th>
+                    <th className="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest p-3 w-[37.5%]">Today</th>
+                    <th className={`text-left text-[10px] font-black uppercase tracking-widest p-3 w-[37.5%] ${PILLAR_COLORS[primary].text}`}>With CasaPay {tier.name}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  <tr>
+                    <td className="p-3 text-xs font-bold text-slate-400">Rent Collection</td>
+                    <td className="p-3 text-xs text-slate-300">{todayCollection}</td>
+                    <td className={`p-3 text-xs font-medium ${PILLAR_COLORS[primary].text}`}>Automated AI gateway</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-xs font-bold text-slate-400">Vendor Stack</td>
+                    <td className="p-3 text-xs text-slate-300">{todayVendors}</td>
+                    <td className={`p-3 text-xs font-medium ${PILLAR_COLORS[primary].text}`}>Single platform</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-xs font-bold text-slate-400">Deposits</td>
+                    <td className="p-3 text-xs text-slate-300">{todayDeposits}</td>
+                    <td className={`p-3 text-xs font-medium ${PILLAR_COLORS[primary].text}`}>{withDeposit}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-xs font-bold text-slate-400">Guarantee</td>
+                    <td className="p-3 text-xs text-slate-300">None</td>
+                    <td className={`p-3 text-xs font-medium ${PILLAR_COLORS[primary].text}`}>{withGuarantee}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-xs font-bold text-slate-400">Late Payments</td>
+                    <td className="p-3 text-xs text-slate-300">{todayLate}</td>
+                    <td className={`p-3 text-xs font-medium ${PILLAR_COLORS[primary].text}`}>{withLate}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* 3. Value Props — Operator + Tenant Side-by-Side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">For the Operator</p>
+                <ul className="space-y-2">
+                  {operatorProps[primary].map((prop, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className={`mt-1 shrink-0 w-1.5 h-1.5 rounded-full ${PILLAR_COLORS[primary].bar}`} />
+                      <span className="text-sm text-slate-200 font-medium">{prop}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">For the Tenant</p>
+                <ul className="space-y-2">
+                  {tenantProps[primary].map((prop, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1 shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-sm text-slate-200 font-medium">{prop}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* 4. Talk Track Bullets (collapsible) */}
+            <div className="rounded-2xl border border-white/10 overflow-hidden">
+              <button
+                onClick={() => setTalkTrackOpen(!talkTrackOpen)}
+                className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/[0.07] transition-colors"
+              >
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Talk Track</span>
+                <ChevronDown size={16} className={`text-slate-500 transition-transform ${talkTrackOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {talkTrackOpen && (
+                <div className="p-5 space-y-5 border-t border-white/5">
+                  {/* Opening */}
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">Opening Line</p>
+                    <p className="text-sm text-slate-200 leading-relaxed italic">&ldquo;{openingLines[primary]}&rdquo;</p>
                   </div>
-                  <p className="text-sm text-slate-200 leading-relaxed font-medium">{feature}</p>
-                </div>
-              ))}
-            </div>
 
-            {/* Savings calculation */}
-            <div className="w-full max-w-2xl glass-card p-6 rounded-2xl border border-white/10 bg-white/5">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Cost Comparison</h3>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Current (multi-vendor)</p>
-                  <p className="text-xl font-black text-slate-300">€{currentMultiVendorCost.toLocaleString()}/mo</p>
-                </div>
-                <ArrowRight className="text-emerald-500 shrink-0" size={20} />
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">CasaPay {tier.name}</p>
-                  <p className="text-xl font-black text-emerald-400">€{casapayCost.toLocaleString()}/mo</p>
-                </div>
-              </div>
-              {monthlySaving > 0 && (
-                <div className="mt-4 pt-4 border-t border-white/5 text-center">
-                  <p className="text-sm text-emerald-400 font-bold">You save €{monthlySaving.toLocaleString()}/month (€{(monthlySaving * 12).toLocaleString()}/year)</p>
+                  {/* The Pitch */}
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">The Pitch</p>
+                    <p className="text-sm text-slate-200 leading-relaxed italic">&ldquo;{pitchLines[primary]}&rdquo;</p>
+                  </div>
+
+                  {/* Objection Pre-empts */}
+                  <div>
+                    <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2">Objection Pre-empts</p>
+                    <ul className="space-y-2">
+                      {objections[primary].map((obj, i) => (
+                        <li key={i} className="text-xs text-slate-300 leading-relaxed pl-3 border-l-2 border-white/10">{obj}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Closing */}
+                  <div>
+                    <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2">Closing Line</p>
+                    <p className="text-sm text-slate-200 leading-relaxed italic">&ldquo;{closingLine}&rdquo;</p>
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* 5. Financial Context (compact) */}
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <p className="text-xs text-slate-300">
+                <span className="font-bold text-white">CasaPay {tier.name} fee:</span> €{casapayCost.toLocaleString()}/mo
+                <span className="text-slate-500"> ({tier.rate} × {unitCount} units × €{avgRent} avg rent)</span>
+              </p>
               {depositCapital > 0 && (
-                <div className="mt-3 text-center">
-                  <p className="text-xs text-slate-400">+ €{depositCapital.toLocaleString()} in deposit capital released</p>
-                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  <span className="font-bold text-slate-300">Deposit capital released:</span> €{depositCapital.toLocaleString()}
+                  <span className="text-slate-500"> (currently locked in {todayDeposits.toLowerCase()})</span>
+                </p>
               )}
             </div>
-
-            {/* CTA */}
-            <button className="px-8 py-4 bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-[0.15em] hover:bg-emerald-400 transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] hover:shadow-emerald-500/50">
-              {answers.portfolioSize === '500+' ? 'Get Proposal' : 'Start Pilot Deployment'}
-            </button>
           </div>
         );
       }
