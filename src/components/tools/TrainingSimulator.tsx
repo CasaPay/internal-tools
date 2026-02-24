@@ -268,91 +268,85 @@ interface ScriptCard {
 const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
   'cold-intro': [
     { title: 'Opening Hook', tips: [
-      'Introduce yourself: name + CasaPay',
-      'Reference their segment pain + Renters Rights Act: "As a [PBSA/HMO/...] operator, with the Renters Rights Act changes..."',
-      'Value prop in 1 sentence: "We provide guaranteed rent on time — you send an invoice, we pay on the due date, even if the tenant is late."',
-      'Ask for 30 seconds: "Would you have 30 seconds for me to explain how?"',
+      'Ask: "Hi [name], this is [your name] from CasaPay. Have I caught you at a bad time?"',
+      'Reference their segment: "I\'m reaching out because we work with [PBSA/HMO/BTR/co-living] operators like yours..."',
+      'Ask: "With the Renters Rights Act changes coming, how are you thinking about your rent collection and deposit setup?"',
+    ]},
+    { title: 'Value Prop (30 seconds)', tips: [
+      'Ask: "Would you have 30 seconds for me to explain what we do?"',
+      'Ask: "In short — you send us a rent invoice, we pay you on the due date, even if the tenant is late. We replace your deposit, screening, and payment collection in one platform. Does that sound relevant to what you\'re dealing with?"',
     ]},
     { title: 'Hook for Operational Roles', roleFilter: 'operational', tips: [
-      'Lead with time savings: "Save your team X hours/week on payment chasing"',
-      'Emphasise workflow simplicity: "Works on top of your current PMS — zero integration"',
-      'Reference their daily pain: "No more manual chasing, no more deposit admin"',
+      'Ask: "How much time does your team spend each week chasing late rent payments?"',
+      'Ask: "What if your team didn\'t have to chase payments at all — it just worked on top of your current PMS with zero integration?"',
     ]},
     { title: 'Hook for Strategic Roles', roleFilter: 'strategic', tips: [
-      'Lead with cost: "Save £X/month vs your current 3-5 vendor stack"',
-      'Emphasise ROI: "Release £X locked in deposits back into operations"',
-      'Reference business impact: "Portfolio-wide reporting, one vendor replacing five"',
+      'Ask: "How many different vendors are you using right now for payments, screening, deposits, and guarantees?"',
+      'Ask: "What if you could replace all of those with one platform and save £X per month?"',
     ]},
     { title: 'If They Engage', tips: [
-      'Qualify quickly: "How many beds/units do you manage?"',
-      'Bridge to meeting: "I think this is worth 15 minutes — can I send a calendar link?"',
-      'Use booking link, don\'t propose times manually',
+      'Ask: "That\'s great — how many beds or units do you manage across your portfolio?"',
+      'Ask: "I\'d love to show you how this works for operators your size. I can send a calendar link for a 15-minute call — would that work?"',
     ]},
     { title: 'If They Push Back', tips: [
-      'Acknowledge: "I understand, you\'re busy"',
-      'Leave a hook: "Just so you know — operators like yours typically save £1,000/month by consolidating 3-5 vendors into one"',
-      'Offer email: "Can I send a one-pager instead?"',
+      'Ask: "I totally understand. Just so you know — operators like yours typically save £1,000/month by consolidating 3-5 vendors into one. Can I send a one-pager to your email in case it\'s useful later?"',
     ]},
   ],
   'discovery': [
-    { title: '3 Pain Points (identify #1 first)', tips: [
-      '🔴 OCCUPANCY — Low fill rates, struggling to attract tenants, competition. → Lead with tenant membership card, verified tenant pool',
-      '🟡 PAYMENT OPS — Manual chasing, multiple vendors, international payment friction. → Lead with AI gateway, email alias, zero integration',
-      '🟢 CASH FLOW — High occupancy but late payments kill liquidity, must pay owners on time. → Lead with ON-TIME guarantee, predictable payouts',
+    { title: 'Identify Their #1 Pain', tips: [
       'Ask: "What\'s your biggest challenge right now — filling units, collecting payments, or cash flow timing?"',
+      '🔴 OCCUPANCY — Low fill rates, struggling to attract tenants → Lead with tenant membership card, verified tenant pool',
+      '🟡 PAYMENT OPS — Manual chasing, multiple vendors, international friction → Lead with AI gateway, email alias, zero integration',
+      '🟢 CASH FLOW — Late payments kill liquidity, must pay owners on time → Lead with ON-TIME guarantee, predictable payouts',
     ]},
     { title: 'Ownership Model (CRITICAL)', tips: [
-      'Ask: "Do you own your buildings, or do you lease/manage them for investors?"',
-      '🏠 OPERATOR (leases) → Cash flow is ALWAYS a top-2 pain. Must pay owners regardless of tenant timing → ON-TIME tier',
-      '🏗️ DEVELOPER/OWNER → Occupancy pain likely. Need to fill units → COVER tier',
-      '🔄 HYBRID → Both pains. Own some (occupancy), lease others (cash flow) → COVER → ON-TIME',
-      '📋 PROPERTY MANAGER → Payment ops pain. Efficient systems for investor reporting → PAYMENTS tier',
+      'Ask: "Do you own your buildings, or do you lease or manage them for investors?"',
+      '🏠 OPERATOR (leases) → Cash flow is ALWAYS a top-2 pain → ON-TIME tier',
+      '🏗️ DEVELOPER/OWNER → Occupancy pain likely → COVER tier',
+      '🔄 HYBRID → Both pains → COVER → ON-TIME',
+      '📋 PROPERTY MANAGER → Payment ops pain → PAYMENTS tier',
     ]},
-    { title: 'Adjust for Operational Role', roleFilter: 'operational', tips: [
-      'Focus on: workflow questions, team size, current daily process, peak season timing',
-      'They won\'t know ROI numbers or budget — don\'t ask',
+    { title: 'Dig Deeper — Operational', roleFilter: 'operational', tips: [
       'Ask: "How many people on your team handle rent collection day-to-day?"',
       'Ask: "What does your process look like when a tenant is late?"',
+      'Ask: "What PMS are you using right now? StarRez, Yardi, Res:Harmonics?"',
+      'Ask: "When is your peak intake season? September?"',
     ]},
-    { title: 'Adjust for Strategic Role', roleFilter: 'strategic', tips: [
-      'Focus on: cost structure, portfolio size, vendor contracts, board reporting needs, decision timeline',
-      'They won\'t know daily workflow details — don\'t dwell',
+    { title: 'Dig Deeper — Strategic', roleFilter: 'strategic', tips: [
       'Ask: "What does your current vendor stack cost you annually across all properties?"',
       'Ask: "Who else would need to sign off on a decision like this?"',
+      'Ask: "What does your board or investors care about most — occupancy rates or net yield?"',
+      'Ask: "When do your current vendor contracts renew?"',
     ]},
-    { title: 'Key Rule', tips: [
-      'Listen more than you talk (40-60% ratio)',
+    { title: 'Confirm & Transition', tips: [
+      'Ask: "So if I\'m hearing you right, your #1 issue is [X] — is that fair?"',
+      'Listen more than you talk (aim for 40-60% ratio)',
       'Don\'t pitch yet — understand their situation first',
-      'Confirm: "So if I\'m hearing you right, your #1 issue is [X]?"',
-      'Document pain + ownership model before moving to demo',
+      'Ask: "Great. I think I can show you exactly how we solve that. Can I walk you through the product?"',
     ]},
   ],
   'demo-pitch': [
-    { title: 'Operational Framing', roleFilter: 'operational', tips: [
-      'Lead with Chrome extension demo — "Your team keeps using [current PMS], we sit on top"',
-      'Show email alias simplicity — "Change one email address, that\'s it"',
-      'Focus on what DOESN\'T change for their team',
-      'Address peak season: "Can go live in 2 weeks, well before September intake"',
+    { title: 'Confirm Pain First', tips: [
+      'Ask: "Before I show you the product — just to confirm, you mentioned [pain point] is your biggest challenge. Is that still the case?"',
+      'Ask: "And you\'re currently using [vendors from discovery] for payments and screening — is that right?"',
+      'Don\'t skip this — if you pitch before confirming, you\'ll lose them',
     ]},
-    { title: 'Strategic Framing', roleFilter: 'strategic', tips: [
-      'Lead with savings calculator — specific numbers for their portfolio size',
-      'Show tier recommendation matched to their pain from discovery',
-      'Portfolio-wide impact: "Across your 2,500 beds, that\'s £X/year in savings + £X released from deposits"',
-      'Competitor comparison: "You\'re currently paying GoCardless + Housing Hand + DPS = £X. We replace all three for £Y."',
+    { title: 'Pitch — Operational Framing', roleFilter: 'operational', tips: [
+      'Ask: "Let me show you how this works day-to-day for your team. Your team keeps using [their PMS] — we sit on top with a Chrome extension. Sound good?"',
+      'Ask: "The way it works: you change one email address on your invoice to our alias. Our AI reads it, matches the tenant, and handles collection. Your team doesn\'t touch anything. Does that make sense?"',
+      'Ask: "We can go live in 2 weeks — well before your September intake. Would that timeline work?"',
     ]},
-    { title: 'Demo Flow', tips: [
-      '1. Confirm pain points from discovery (don\'t skip this)',
-      '2. Match to the right tier based on pain + ownership model',
-      '3. AI gateway: operator sends invoice to @alias → AI parses → tenant pays → operator gets payout',
-      '4. Chrome extension: works with ANY PMS, no IT integration',
-      '5. Savings calculator with THEIR numbers',
-      '6. Q&A → Next steps',
+    { title: 'Pitch — Strategic Framing', roleFilter: 'strategic', tips: [
+      'Ask: "Let me show you the commercial impact. Across your [X] beds, here\'s what the numbers look like..."',
+      'Ask: "Right now you\'re paying GoCardless + Housing Hand + DPS separately — that\'s roughly £[X]/year. CasaPay replaces all three for [Y]%. The net saving is £[Z]/month. Does that sound right?"',
+      'Ask: "Which tier makes most sense for your situation — do you need guaranteed payout, or is the core payments + screening enough?"',
     ]},
-    { title: 'Product Tiers (match to pain)', tips: [
+    { title: 'Product Tiers', tips: [
       'PAYMENTS (1.0%) — collection + screening. For: payment ops pain, property managers',
       'COVER (1.5%) — + guarantee + deposit elimination. For: occupancy pain, developers/owners',
       'ON-TIME (2.5%) — guaranteed payout on due date. For: cash flow pain, operators who lease',
-      'ENTERPRISE (custom) — 500+ units, dedicated AM. For: portfolio directors, institutional',
+      'ENTERPRISE (custom) — 500+ units, dedicated AM',
+      'Ask: "Based on what you\'ve told me, I\'d recommend [TIER] — here\'s why..."',
     ]},
     { title: 'Proof Points', tips: [
       '36 live operators across EU + UK',
@@ -360,64 +354,60 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
       'Fastest deal close: 16 days (Aria Apartments)',
       'Chrome plugin = works with any PMS, no IT needed',
       'Renters Rights Act ready — deposit replacement compliant',
+      'Ask: "Would it be helpful to connect you with a similar operator who\'s already using this?"',
     ]},
   ],
   'objection-handling': [
-    { title: '"You\'re early-stage"', tips: [
-      '"36 live operators, 220+ tenants, EU + UK. Battle-tested across PBSA, HMO, BTR, co-living."',
-      'Specific proof: "Aria Apartments closed in 16 days, live within a month."',
-      'If strategic: offer to share case study from similar portfolio size',
+    { title: '"You\'re too early-stage"', tips: [
+      'Ask: "I hear that concern. Can I share some specifics? We have 36 live operators, 220+ tenants across EU and UK. Aria Apartments closed in 16 days and were live within a month. Would a case study from a similar-sized operator help?"',
     ]},
-    { title: '"Need full PMS integration"', tips: [
-      '"CasaPay Link Chrome plugin works with ANY PMS — StarRez, Yardi, Res:Harmonics. No migration."',
-      '"Our email alias method means zero integration — just change the email address on your invoice."',
-      '"Your team keeps their current system. We sit on top, not underneath."',
+    { title: '"We need full PMS integration"', tips: [
+      'Ask: "That\'s a common question. Our Chrome plugin works with any PMS — StarRez, Yardi, Res:Harmonics. Your team keeps their current system, we sit on top. Does that address the integration concern?"',
+      'Ask: "Alternatively, our email alias method means literally zero integration — you change one email address. Would you like me to show you how that works?"',
     ]},
-    { title: '"Too expensive / we have GoCardless / Stripe"', tips: [
-      '"CasaPay replaces 3-5 vendors: payment processing + screening + deposits + guarantees. One platform, one fee."',
-      '"Run the savings calc: GoCardless (0.5%) + Housing Hand (£200/tenant) + DPS admin (£X/year) vs CasaPay all-in at 1.5%"',
-      '"Stripe handles payments only. You still need screening + guarantee + deposit separately = 4 contracts vs 1."',
+    { title: '"Too expensive / we have GoCardless"', tips: [
+      'Ask: "Let\'s compare apples to apples. Right now you\'re paying GoCardless for payments, plus Housing Hand for guarantees, plus DPS for deposits — that\'s 3 contracts. CasaPay replaces all three. What are you currently paying across those vendors?"',
+      'Ask: "So if we can do all of that for less than what you\'re paying today, and save your team [X] hours a week — would that change the equation?"',
     ]},
     { title: 'Operational Objections', roleFilter: 'operational', tips: [
-      '"My team won\'t use another system" → "They keep their current PMS. CasaPay is invisible to them — it\'s just a Chrome extension."',
-      '"Bad timing (peak season)" → "We can go live in 2 weeks. Most ops teams are onboarded in a single afternoon session."',
-      '"Current system works fine" → "How much time per week does your team spend chasing late payments? That time has a cost."',
+      '"My team won\'t use another system"',
+      'Ask: "I completely understand. The good news is your team keeps their current PMS. CasaPay is invisible to them — it\'s just a Chrome extension they don\'t even need to open. Would a 15-minute demo for your team help?"',
+      '"Bad timing / peak season"',
+      'Ask: "Actually, that\'s the best time to start. We can go live in 2 weeks — most ops teams are onboarded in a single afternoon session. If we start now, you\'re covered before September intake. Shall we aim for that?"',
     ]},
     { title: 'Strategic Objections', roleFilter: 'strategic', tips: [
-      '"You\'re early-stage for our scale" → "We handle portfolios up to 2,500 beds. Happy to start with a pilot on one property."',
-      '"Need board/investor approval" → "Understood. Can I send a one-pager with ROI numbers your board can review?"',
-      '"Already have contracts with Flatfair/Housing Hand" → "When do those renew? Most operators run CasaPay alongside first, then consolidate."',
-      '"What if you go under?" → "Funds are held in segregated accounts. Your money is protected regardless of what happens to CasaPay."',
+      '"Need board approval"',
+      'Ask: "Understood. Can I send a one-pager with the ROI numbers specifically for your portfolio? That way your board has everything they need. What format works best?"',
+      '"Already have Flatfair/Housing Hand"',
+      'Ask: "When do those contracts renew? Most operators run CasaPay alongside first to compare, then consolidate. Would a pilot on one property make sense?"',
+      '"What if you go under?"',
+      'Ask: "Fair question. Funds are held in segregated accounts — your money is protected regardless. Would you like to see the detail on our trust structure?"',
     ]},
-    { title: '"Will students/tenants adopt it?"', tips: [
-      '"International students especially value: no deposit required, FX handling, UK credit history building."',
-      '"Tenant onboarding is self-serve via QR code or link. Average activation: 48 hours."',
+    { title: '"Will tenants adopt it?"', tips: [
+      'Ask: "International students especially love it — no deposit required, FX handling built in, and they build UK credit history. Onboarding is self-serve via QR code. Average activation is 48 hours. Would you like to see the tenant flow?"',
     ]},
   ],
   'offer-close': [
-    { title: 'Operational Close', roleFilter: 'operational', tips: [
-      'Close = champion introduction: "Would you be open to introducing us to your [Director/Owner]?"',
-      'Or pilot close: "Can we do a pilot on your building? We handle the setup, your team just keeps doing what they do."',
-      'Timeline: "To be live for September, we\'d need to start onboarding by July."',
-      'Reassure: "Nothing changes for your team except less manual chasing."',
+    { title: 'Frame the Offer', tips: [
+      'Ask: "Based on everything we\'ve discussed — your [pain point], your [X] units, and your current [vendor] setup — here\'s what I\'d recommend..."',
+      'Ask: "The [TIER] at [X%] on your rent roll of £[Y]/month means a fee of £[Z]/month. Compared to your current £[A]/month across [vendors], that\'s a net saving of £[B]/month. Does that look right?"',
+      'Recommend tier based on pain: occupancy → COVER, payment ops → PAYMENTS, cash flow → ON-TIME',
     ]},
-    { title: 'Strategic Close', roleFilter: 'strategic', tips: [
-      'Direct proposal: "Based on your 1,200 units, here\'s what the numbers look like..."',
-      'Pilot terms: "Start with 20-50 units on one property. Prove the ROI before rolling out."',
-      'Timeline: "To capture September intake, we need contracts signed by end of June."',
-      'Commitment: "Shall I send the proposal today? I can walk you through the terms this week."',
+    { title: 'Close — Operational', roleFilter: 'operational', tips: [
+      'Ask: "Would you be open to introducing us to your [Director/Owner]? I can prepare the numbers so you\'re bringing them a solution, not a question."',
+      'Ask: "Or if you\'d prefer — can we do a pilot on your building? We handle the setup, your team just keeps doing what they do."',
+      'Ask: "To be live for September, we\'d need to start onboarding by July. Does that timeline work for you?"',
     ]},
-    { title: 'Framing the Offer', tips: [
-      'Tie back to THEIR pain points from discovery + ownership model',
-      'Show specific savings using their portfolio size and current vendor costs',
-      'Recommend a tier based on pain: occupancy → COVER, payment ops → PAYMENTS, cash flow → ON-TIME',
-      '"Based on your [X] units, the [TIER] at [X%] saves you approximately £[X]/month vs your current setup"',
+    { title: 'Close — Strategic', roleFilter: 'strategic', tips: [
+      'Ask: "Based on your [X] units, shall I send over a formal proposal today? I can walk you through the terms this week."',
+      'Ask: "Would it make sense to start with a 20-50 unit pilot on one property? Prove the ROI before rolling out across the portfolio."',
+      'Ask: "To capture September intake, we\'d need contracts signed by end of June. Is that achievable on your side?"',
     ]},
     { title: 'If They Hesitate', tips: [
-      '"Is there a specific concern I can address?"',
-      '"Happy to share a case study from a similar [PBSA/HMO/BTR/co-living] operator"',
-      '"Would a pilot on one property help you prove the business case internally?"',
-      'Never pressure — propose a clear next step instead',
+      'Ask: "Is there a specific concern holding you back that I can address right now?"',
+      'Ask: "Would it help to speak with a similar [PBSA/HMO/BTR/co-living] operator who\'s already live?"',
+      'Ask: "Would a no-commitment pilot on one property help you prove the business case internally?"',
+      'Never pressure — always propose a clear, low-risk next step',
     ]},
   ],
 };
