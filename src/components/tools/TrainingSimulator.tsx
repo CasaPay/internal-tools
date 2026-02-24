@@ -269,7 +269,7 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
   'cold-intro': [
     { title: 'Opening Hook', tips: [
       'Ask: "Hi [name], this is [your name] from CasaPay. Have I caught you at a bad time?"',
-      'Reference their segment: "I\'m reaching out because we work with [PBSA/HMO/BTR/co-living] operators like yours..."',
+      'Ask: "I\'m reaching out because we work with [PBSA/HMO/BTR/co-living] operators like yours..."',
       'Ask: "With the Renters Rights Act changes coming, how are you thinking about your rent collection and deposit setup?"',
     ]},
     { title: 'Value Prop (30 seconds)', tips: [
@@ -295,16 +295,15 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
   'discovery': [
     { title: 'Identify Their #1 Pain', tips: [
       'Ask: "What\'s your biggest challenge right now — filling units, collecting payments, or cash flow timing?"',
-      '🔴 OCCUPANCY — Low fill rates, struggling to attract tenants → Lead with tenant membership card, verified tenant pool',
-      '🟡 PAYMENT OPS — Manual chasing, multiple vendors, international friction → Lead with AI gateway, email alias, zero integration',
-      '🟢 CASH FLOW — Late payments kill liquidity, must pay owners on time → Lead with ON-TIME guarantee, predictable payouts',
+      'Ask: "If they say OCCUPANCY: Tell me more — what\'s your current fill rate and how are you attracting tenants?"',
+      'Ask: "If they say PAYMENT OPS: How many vendors are you juggling right now for payments, screening, and deposits?"',
+      'Ask: "If they say CASH FLOW: Are you having to cover owner payouts out of pocket when tenants pay late?"',
     ]},
     { title: 'Ownership Model (CRITICAL)', tips: [
       'Ask: "Do you own your buildings, or do you lease or manage them for investors?"',
-      '🏠 OPERATOR (leases) → Cash flow is ALWAYS a top-2 pain → ON-TIME tier',
-      '🏗️ DEVELOPER/OWNER → Occupancy pain likely → COVER tier',
-      '🔄 HYBRID → Both pains → COVER → ON-TIME',
-      '📋 PROPERTY MANAGER → Payment ops pain → PAYMENTS tier',
+      'Ask: "If they LEASE/OPERATE: So cash flow timing is critical for you — you have to pay owners regardless of when tenants pay, right?"',
+      'Ask: "If they OWN/DEVELOP: So filling those units fast is the priority — every empty bed is lost revenue, correct?"',
+      'Ask: "If they MANAGE for investors: So you need clean reporting and efficient payment ops to keep your investors happy?"',
     ]},
     { title: 'Dig Deeper — Operational', roleFilter: 'operational', tips: [
       'Ask: "How many people on your team handle rent collection day-to-day?"',
@@ -320,8 +319,7 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
     ]},
     { title: 'Confirm & Transition', tips: [
       'Ask: "So if I\'m hearing you right, your #1 issue is [X] — is that fair?"',
-      'Listen more than you talk (aim for 40-60% ratio)',
-      'Don\'t pitch yet — understand their situation first',
+      'Ask: "And you\'re currently [ownership model] with [X] units — correct?"',
       'Ask: "Great. I think I can show you exactly how we solve that. Can I walk you through the product?"',
     ]},
   ],
@@ -329,7 +327,6 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
     { title: 'Confirm Pain First', tips: [
       'Ask: "Before I show you the product — just to confirm, you mentioned [pain point] is your biggest challenge. Is that still the case?"',
       'Ask: "And you\'re currently using [vendors from discovery] for payments and screening — is that right?"',
-      'Don\'t skip this — if you pitch before confirming, you\'ll lose them',
     ]},
     { title: 'Pitch — Operational Framing', roleFilter: 'operational', tips: [
       'Ask: "Let me show you how this works day-to-day for your team. Your team keeps using [their PMS] — we sit on top with a Chrome extension. Sound good?"',
@@ -341,19 +338,15 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
       'Ask: "Right now you\'re paying GoCardless + Housing Hand + DPS separately — that\'s roughly £[X]/year. CasaPay replaces all three for [Y]%. The net saving is £[Z]/month. Does that sound right?"',
       'Ask: "Which tier makes most sense for your situation — do you need guaranteed payout, or is the core payments + screening enough?"',
     ]},
-    { title: 'Product Tiers', tips: [
-      'PAYMENTS (1.0%) — collection + screening. For: payment ops pain, property managers',
-      'COVER (1.5%) — + guarantee + deposit elimination. For: occupancy pain, developers/owners',
-      'ON-TIME (2.5%) — guaranteed payout on due date. For: cash flow pain, operators who lease',
-      'ENTERPRISE (custom) — 500+ units, dedicated AM',
-      'Ask: "Based on what you\'ve told me, I\'d recommend [TIER] — here\'s why..."',
+    { title: 'Recommend a Tier', tips: [
+      'Ask: "Based on what you\'ve told me — your [pain] and [ownership model] — I\'d recommend our [TIER] tier at [X%]. Here\'s why..."',
+      'Ask: "PAYMENTS at 1.0% if your main issue is payment ops and screening"',
+      'Ask: "COVER at 1.5% if you need guarantee + deposit elimination for occupancy"',
+      'Ask: "ON-TIME at 2.5% if you need guaranteed payout on the due date for cash flow"',
     ]},
-    { title: 'Proof Points', tips: [
-      '36 live operators across EU + UK',
-      '220+ tenants actively using',
-      'Fastest deal close: 16 days (Aria Apartments)',
-      'Chrome plugin = works with any PMS, no IT needed',
-      'Renters Rights Act ready — deposit replacement compliant',
+    { title: 'Proof & Next Steps', tips: [
+      'Ask: "We have 36 live operators across EU and UK, 220+ active tenants. Our fastest close was Aria Apartments — 16 days from first call to live."',
+      'Ask: "The Chrome plugin works with any PMS and we\'re fully Renters Rights Act compliant for deposit replacement."',
       'Ask: "Would it be helpful to connect you with a similar operator who\'s already using this?"',
     ]},
   ],
@@ -369,18 +362,19 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
       'Ask: "Let\'s compare apples to apples. Right now you\'re paying GoCardless for payments, plus Housing Hand for guarantees, plus DPS for deposits — that\'s 3 contracts. CasaPay replaces all three. What are you currently paying across those vendors?"',
       'Ask: "So if we can do all of that for less than what you\'re paying today, and save your team [X] hours a week — would that change the equation?"',
     ]},
-    { title: 'Operational Objections', roleFilter: 'operational', tips: [
-      '"My team won\'t use another system"',
+    { title: '"My team won\'t use another system"', roleFilter: 'operational', tips: [
       'Ask: "I completely understand. The good news is your team keeps their current PMS. CasaPay is invisible to them — it\'s just a Chrome extension they don\'t even need to open. Would a 15-minute demo for your team help?"',
-      '"Bad timing / peak season"',
+    ]},
+    { title: '"Bad timing / peak season"', roleFilter: 'operational', tips: [
       'Ask: "Actually, that\'s the best time to start. We can go live in 2 weeks — most ops teams are onboarded in a single afternoon session. If we start now, you\'re covered before September intake. Shall we aim for that?"',
     ]},
-    { title: 'Strategic Objections', roleFilter: 'strategic', tips: [
-      '"Need board approval"',
+    { title: '"Need board approval"', roleFilter: 'strategic', tips: [
       'Ask: "Understood. Can I send a one-pager with the ROI numbers specifically for your portfolio? That way your board has everything they need. What format works best?"',
-      '"Already have Flatfair/Housing Hand"',
+    ]},
+    { title: '"Already have Flatfair/Housing Hand"', roleFilter: 'strategic', tips: [
       'Ask: "When do those contracts renew? Most operators run CasaPay alongside first to compare, then consolidate. Would a pilot on one property make sense?"',
-      '"What if you go under?"',
+    ]},
+    { title: '"What if you go under?"', roleFilter: 'strategic', tips: [
       'Ask: "Fair question. Funds are held in segregated accounts — your money is protected regardless. Would you like to see the detail on our trust structure?"',
     ]},
     { title: '"Will tenants adopt it?"', tips: [
@@ -391,7 +385,6 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
     { title: 'Frame the Offer', tips: [
       'Ask: "Based on everything we\'ve discussed — your [pain point], your [X] units, and your current [vendor] setup — here\'s what I\'d recommend..."',
       'Ask: "The [TIER] at [X%] on your rent roll of £[Y]/month means a fee of £[Z]/month. Compared to your current £[A]/month across [vendors], that\'s a net saving of £[B]/month. Does that look right?"',
-      'Recommend tier based on pain: occupancy → COVER, payment ops → PAYMENTS, cash flow → ON-TIME',
     ]},
     { title: 'Close — Operational', roleFilter: 'operational', tips: [
       'Ask: "Would you be open to introducing us to your [Director/Owner]? I can prepare the numbers so you\'re bringing them a solution, not a question."',
@@ -407,7 +400,6 @@ const STAGE_SCRIPTS: Record<StageId, ScriptCard[]> = {
       'Ask: "Is there a specific concern holding you back that I can address right now?"',
       'Ask: "Would it help to speak with a similar [PBSA/HMO/BTR/co-living] operator who\'s already live?"',
       'Ask: "Would a no-commitment pilot on one property help you prove the business case internally?"',
-      'Never pressure — always propose a clear, low-risk next step',
     ]},
   ],
 };
@@ -682,27 +674,17 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
             {/* Tips — only shown for active step */}
             {isActive && (
               <div className="px-4 pb-4 space-y-2">
-                {card.tips.map((tip, j) => {
-                  const isAsk = tip.startsWith('Ask:');
-                  return isAsk ? (
-                    <div
-                      key={j}
-                      className="p-3 rounded-lg bg-blue-500/[0.06] border border-blue-500/20"
-                    >
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-1">Say this</span>
-                      <span className="text-sm leading-relaxed text-blue-200">
-                        {tip.replace(/^Ask:\s*/, '')}
-                      </span>
-                    </div>
-                  ) : (
-                    <div
-                      key={j}
-                      className="p-2.5 rounded-lg bg-white/[0.02] text-sm leading-relaxed text-slate-200"
-                    >
-                      {tip}
-                    </div>
-                  );
-                })}
+                {card.tips.map((tip, j) => (
+                  <div
+                    key={j}
+                    className="p-3 rounded-lg bg-blue-500/[0.06] border border-blue-500/20"
+                  >
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-1">Say this</span>
+                    <span className="text-sm leading-relaxed text-blue-200">
+                      {tip.replace(/^Ask:\s*/, '')}
+                    </span>
+                  </div>
+                ))}
 
                 {/* Next step button */}
                 {i < cards.length - 1 && (
