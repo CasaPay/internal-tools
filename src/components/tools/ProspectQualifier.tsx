@@ -846,8 +846,8 @@ export default function ProspectQualifier() {
     <div className="text-slate-200 font-sans antialiased overflow-hidden selection:bg-blue-500/30 flex flex-col p-4 md:p-6">
       <main className="flex-1 flex flex-col max-w-6xl mx-auto w-full overflow-y-auto custom-scrollbar space-y-5">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Prospect Qualifier</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">Qualify operators through problem validation, financial impact &amp; solution fit</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">Sales Rep Cheat Sheet</h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Internal tool — qualify the operator, get your talk track &amp; tier recommendation</p>
         </div>
         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
           <div
