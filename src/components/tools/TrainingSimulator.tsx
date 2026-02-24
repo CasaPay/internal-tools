@@ -61,7 +61,11 @@ interface Session {
   scores: ScoreEntry[];
   overallScore: number;
   transcript: TranscriptLine[];
+  userName?: string;
 }
+
+const USERS = ['Risto', 'Illimar', 'Angela'] as const;
+type UserName = typeof USERS[number];
 
 // ── Data ───────────────────────────────────────────────────────────────────
 
@@ -656,6 +660,11 @@ export default function TrainingSimulator() {
   const [liveTranscript, setLiveTranscript] = useState<TranscriptLine[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserName | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const stored = localStorage.getItem('cp-training-user');
+    return USERS.includes(stored as UserName) ? stored as UserName : null;
+  });
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const conversationRef = useRef<Conversation | null>(null);
@@ -668,12 +677,17 @@ export default function TrainingSimulator() {
   const finishingRef = useRef(false);
   const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const callModeRef = useRef<CallMode>('training');
+  const selectedUserRef = useRef<UserName | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
   useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
   useEffect(() => { selectedStageRef.current = selectedStage; }, [selectedStage]);
   useEffect(() => { callModeRef.current = callMode; }, [callMode]);
+  useEffect(() => {
+    selectedUserRef.current = selectedUser;
+    if (selectedUser) localStorage.setItem('cp-training-user', selectedUser);
+  }, [selectedUser]);
 
   // Load sessions from server on mount (merge with any localStorage sessions)
   useEffect(() => {
@@ -780,6 +794,7 @@ export default function TrainingSimulator() {
       scores,
       overallScore: overall,
       transcript,
+      userName: selectedUserRef.current || undefined,
     };
 
     setSessions((prev) => {
@@ -972,6 +987,8 @@ TRAINING MODE — COACHING RULES:
                       </div>
                       <div>
                         <div className="text-xs font-bold text-white">
+                          {s.userName && <span className="text-emerald-400">{s.userName}</span>}
+                          {s.userName && ' — '}
                           {persona.name}{roleLabel ? ` — ${roleLabel}` : ''}
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -1234,11 +1251,36 @@ TRAINING MODE — COACHING RULES:
         )}
       </div>
 
-      {/* Step 1: Segment */}
+      {/* Step 1: Who's practicing */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
             <span className="text-[10px] font-black text-emerald-400">1</span>
+          </div>
+          <span className="text-xs font-bold text-white">Who&apos;s Practicing?</span>
+        </div>
+        <div className="flex gap-2">
+          {USERS.map((name) => (
+            <button
+              key={name}
+              onClick={() => setSelectedUser(name)}
+              className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all duration-200 ${
+                selectedUser === name
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 ring-1 ring-emerald-500/20'
+                  : 'border-white/10 bg-white/[0.02] text-slate-400 hover:bg-white/[0.04] hover:border-white/20 hover:text-white'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Step 2: Segment */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+            <span className="text-[10px] font-black text-emerald-400">2</span>
           </div>
           <span className="text-xs font-bold text-white">Choose Segment</span>
         </div>
@@ -1249,12 +1291,12 @@ TRAINING MODE — COACHING RULES:
         </div>
       </div>
 
-      {/* Step 2: Role (only shown after segment selected) */}
+      {/* Step 3: Role (only shown after segment selected) */}
       {selectedPersona && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-              <span className="text-[10px] font-black text-emerald-400">2</span>
+              <span className="text-[10px] font-black text-emerald-400">3</span>
             </div>
             <span className="text-xs font-bold text-white">Choose Role</span>
           </div>
@@ -1299,11 +1341,11 @@ TRAINING MODE — COACHING RULES:
         </div>
       )}
 
-      {/* Step 3: Mode */}
+      {/* Step 4: Mode */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <span className="text-[10px] font-black text-emerald-400">3</span>
+            <span className="text-[10px] font-black text-emerald-400">4</span>
           </div>
           <span className="text-xs font-bold text-white">Select Mode</span>
         </div>
@@ -1343,11 +1385,11 @@ TRAINING MODE — COACHING RULES:
         </div>
       </div>
 
-      {/* Step 4: Stage */}
+      {/* Step 5: Stage */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <span className="text-[10px] font-black text-emerald-400">4</span>
+            <span className="text-[10px] font-black text-emerald-400">5</span>
           </div>
           <span className="text-xs font-bold text-white">Select Sales Stage</span>
         </div>
@@ -1361,9 +1403,9 @@ TRAINING MODE — COACHING RULES:
       <div className="pt-2">
         <button
           onClick={startCall}
-          disabled={!selectedPersona || !selectedStage}
+          disabled={!selectedUser || !selectedPersona || !selectedStage}
           className={`w-full py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-3 ${
-            selectedPersona && selectedStage
+            selectedUser && selectedPersona && selectedStage
               ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 cursor-pointer'
               : 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
           }`}
@@ -1371,8 +1413,8 @@ TRAINING MODE — COACHING RULES:
           <Phone size={18} />
           Start Practice Call
         </button>
-        {(!selectedPersona || !selectedStage) && (
-          <p className="text-[10px] text-slate-600 text-center mt-2">Select a segment, role, and stage to begin</p>
+        {(!selectedUser || !selectedPersona || !selectedStage) && (
+          <p className="text-[10px] text-slate-600 text-center mt-2">Select your name, a segment, role, and stage to begin</p>
         )}
       </div>
     </div>
