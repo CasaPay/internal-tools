@@ -195,29 +195,40 @@ const PERSONA_DESCRIPTIONS: Record<PersonaId, Record<RoleId, string>> = {
 };
 
 // First message the AI says when "picking up the phone" — varies by stage and role
-function getFirstMessage(persona: Persona, role: Role, stage: StageId): string {
+function getFirstMessage(persona: Persona, role: Role, stage: StageId, mode: CallMode): string {
   const name = persona.characterName;
   const title = role.title;
+  let inCharacterMsg: string;
   switch (stage) {
     case 'cold-intro':
-      return `Hello, ${name} speaking.`;
+      inCharacterMsg = `Hello, ${name} speaking.`;
+      break;
     case 'discovery':
-      return role.id === 'operational'
+      inCharacterMsg = role.id === 'operational'
         ? `Hi, ${name} here. Thanks for calling — I've got about ten minutes before I need to get back to it, so let's be quick.`
         : `Hi, ${name} here. Thanks for calling — I've got fifteen minutes. What's this about?`;
+      break;
     case 'demo-pitch':
-      return role.id === 'operational'
+      inCharacterMsg = role.id === 'operational'
         ? `Hi there, ${name} speaking. I believe we had this call booked in for a product walkthrough? Go ahead, but keep it practical — I need to understand how this actually works day-to-day.`
         : `Hi there, ${name} speaking. I believe we had this call booked in for a product walkthrough? Before we get into features — give me the commercial overview first.`;
+      break;
     case 'objection-handling':
-      return role.id === 'operational'
+      inCharacterMsg = role.id === 'operational'
         ? `Hi, ${name} here. So look, I've been thinking about what we discussed last time, and I've got some practical concerns before we go any further.`
         : `Hi, ${name} here. So I've reviewed what you sent. I've got some questions about the numbers and the risk profile before we go any further.`;
+      break;
     case 'offer-close':
-      return role.id === 'operational'
+      inCharacterMsg = role.id === 'operational'
         ? `Hi, ${name} speaking. Right, so before we talk numbers — I need to understand exactly what changes for my team if we go ahead.`
         : `Hi, ${name} speaking. Right, so I understand you're sending over a proposal. Before we go through numbers, tell me what you're thinking in terms of total cost and savings.`;
+      break;
   }
+
+  if (mode === 'training') {
+    return `Alright, training mode. I'll be ${name}, your ${title}. I'll stay in character, but if you slip up I'll pause and coach you through it. Here we go. ... ${inCharacterMsg}`;
+  }
+  return inCharacterMsg;
 }
 
 const STAGES: Stage[] = [
@@ -766,8 +777,22 @@ export default function TrainingSimulator() {
     finishingRef.current = false;
 
     // Build context override: base prospect role + stage context + role overlay + persona description
+    const basePrompt = callMode === 'exam'
+      ? `You are playing the role of a property industry prospect receiving a sales call from a CasaPay sales rep. You are NOT the salesperson — you are the prospect being pitched to. Stay in character as ${persona.characterName}, a ${role.title} in the ${persona.segment} sector. Respond naturally as this person would on a real phone call. Never break character. Never help the rep or coach them. Make them earn every step.`
+      : `You are playing the role of a property industry prospect in a TRAINING session with a CasaPay sales rep. You are ${persona.characterName}, a ${role.title} in the ${persona.segment} sector.
+
+TRAINING MODE — COACHING RULES:
+1. Start each exchange IN CHARACTER as the prospect. React naturally as this person would on a real call.
+2. If the rep makes a clear mistake — weak/generic hook, skips qualification, pitches the wrong tier, gives a vague objection response, fails to use specific numbers, or misses a key step for this stage — PAUSE the roleplay.
+3. When pausing: briefly step out of character (say "Quick coaching note:"), explain specifically what went wrong, give them an example of what they SHOULD have said (use a concrete phrase they can repeat), then say "Let's try that again" and repeat your last line in character so they can retry.
+4. If they retry and do better, acknowledge it briefly ("Much better") and continue advancing the conversation in character.
+5. If the rep does something well, stay in character but you can weave in subtle acknowledgment (e.g., "That's a fair point" or show genuine interest).
+6. Be encouraging but direct — don't let bad technique slide. The goal is to build their skill through practice and immediate correction.
+7. When in character, still behave realistically — don't make it artificially easy. Challenge them as the real prospect would, but coach when they fail to meet the challenge.
+8. Maximum 2 coaching pauses in a row — if they struggle repeatedly on the same point, give them the answer and move on to avoid frustration.`;
+
     const contextOverride = [
-      `You are playing the role of a property industry prospect receiving a sales call from a CasaPay sales rep. You are NOT the salesperson — you are the prospect being pitched to. Stay in character as ${persona.characterName}, a ${role.title} in the ${persona.segment} sector. Respond naturally as this person would on a real phone call. Never break character. Never help the rep or coach them. Make them earn every step.`,
+      basePrompt,
       STAGE_CONTEXT[selectedStage],
       ROLE_CONTEXT[selectedRole],
       `Your persona: ${personaDesc}`,
@@ -793,7 +818,7 @@ export default function TrainingSimulator() {
       ringTone.start();
 
       // Start ElevenLabs conversation (ring plays concurrently)
-      const firstMsg = getFirstMessage(persona, role, selectedStage);
+      const firstMsg = getFirstMessage(persona, role, selectedStage, callMode);
       console.log('[TrainingSim] Starting session with signedUrl:', signedUrl.slice(0, 60) + '...');
       console.log('[TrainingSim] firstMessage:', firstMsg);
       console.log('[TrainingSim] role:', selectedRole, '| context length:', contextOverride.length);
