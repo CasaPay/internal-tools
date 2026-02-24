@@ -1,7 +1,9 @@
 import Redis from 'ioredis';
+import type { RoadmapState } from './roadmap-types';
 
 const SNAPSHOT_KEY = 'prospector:snapshot';
 const SNAPSHOT_TTL = 3600; // 1 hour safety net
+const ROADMAP_KEY = 'prospector:roadmap';
 
 let redis: Redis | null = null;
 
@@ -91,4 +93,18 @@ export async function setSnapshot(data: string): Promise<void> {
   const client = getRedis();
   if (!client) throw new Error('Redis not configured');
   await client.set(SNAPSHOT_KEY, data, 'EX', SNAPSHOT_TTL);
+}
+
+export async function getRoadmapState(): Promise<RoadmapState | null> {
+  const client = getRedis();
+  if (!client) return null;
+  const data = await client.get(ROADMAP_KEY);
+  if (!data) return null;
+  return JSON.parse(data);
+}
+
+export async function setRoadmapState(state: RoadmapState): Promise<void> {
+  const client = getRedis();
+  if (!client) throw new Error('Redis not configured');
+  await client.set(ROADMAP_KEY, JSON.stringify(state));
 }

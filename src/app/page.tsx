@@ -7,6 +7,7 @@ import SalesTargetCalculator from '@/components/tools/SalesTargetCalculator';
 import UnitEconomics from '@/components/tools/UnitEconomics';
 import TrainingSimulator from '@/components/tools/TrainingSimulator';
 import PerformanceCascade from '@/components/tools/PerformanceCascade';
+import SalesRoadmap from '@/components/tools/SalesRoadmap';
 
 const PASS = 'CP2143@';
 const STORAGE_KEY = 'cp-auth';
@@ -75,6 +76,7 @@ export default function Home() {
         {currentTool === 'unit-economics' && <UnitEconomics />}
         {currentTool === 'training' && <TrainingSimulator />}
         {currentTool === 'cascade' && <PerformanceCascade />}
+        {currentTool === 'roadmap' && <SalesRoadmap />}
       </main>
     </div>
   );
