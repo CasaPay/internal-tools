@@ -616,14 +616,7 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
   const allCards = STAGE_SCRIPTS[stageId];
   const cards = allCards.filter((c) => !c.roleFilter || c.roleFilter === roleId);
   const [activeStep, setActiveStep] = useState(0);
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const activeRef = useRef<HTMLDivElement>(null);
-
-  const toggleCheck = (key: string) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const checkableTips = (i: number) => cards[i].tips.filter((t) => !t.startsWith('Ask:'));
-  const stepCheckedCount = (i: number) => checkableTips(i).filter((_, j) => checked[`${i}-c${j}`]).length;
-  const stepComplete = (i: number) => { const c = checkableTips(i); return c.length > 0 ? stepCheckedCount(i) === c.length : false; };
 
   const goNext = () => {
     if (activeStep < cards.length - 1) {
@@ -651,7 +644,7 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-              stepComplete(i) ? 'bg-emerald-500' : i === activeStep ? 'bg-emerald-500/40' : 'bg-white/5'
+              i < activeStep ? 'bg-emerald-500' : i === activeStep ? 'bg-emerald-500/40' : 'bg-white/5'
             }`}
           />
         ))}
@@ -660,7 +653,6 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
       {/* Steps */}
       {cards.map((card, i) => {
         const isActive = i === activeStep;
-        const isDone = stepComplete(i);
         const isPast = i < activeStep;
 
         return (
@@ -670,7 +662,7 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
             className={`rounded-xl border overflow-hidden transition-all duration-300 ${
               isActive
                 ? 'border-emerald-500/30 bg-emerald-500/[0.03] ring-1 ring-emerald-500/10'
-                : isDone || isPast
+                : isPast
                   ? 'border-white/5 bg-white/[0.01] opacity-50'
                   : 'border-white/5 bg-white/[0.01] opacity-30'
             }`}
@@ -683,72 +675,42 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
               }}
               className="w-full text-left px-4 py-3 flex items-center gap-3"
             >
-              {/* Step number / check */}
               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black ${
-                isDone
+                isPast
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                   : isActive
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                     : 'bg-white/5 text-slate-600 border border-white/10'
               }`}>
-                {isDone ? '\u2713' : i + 1}
+                {isPast ? '\u2713' : i + 1}
               </div>
-              <div className="flex-1 min-w-0">
-                <span className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
-                  {card.title}
-                </span>
-                {!isActive && checkableTips(i).length > 0 && (
-                  <span className="text-[10px] text-slate-600 ml-2">
-                    {stepCheckedCount(i)}/{checkableTips(i).length}
-                  </span>
-                )}
-              </div>
+              <span className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
+                {card.title}
+              </span>
             </button>
 
             {/* Tips — only shown for active step */}
-            {isActive && (() => {
-              const askTips = card.tips.filter((t) => t.startsWith('Ask:'));
-              const regularTips = card.tips.filter((t) => !t.startsWith('Ask:'));
-              return (
+            {isActive && (
               <div className="px-4 pb-4 space-y-2">
-                {/* "Say this" prompts — always first, no checkbox */}
-                {askTips.map((tip, j) => (
-                  <div
-                    key={`ask-${j}`}
-                    className="w-full text-left p-3 rounded-lg bg-blue-500/[0.06] border border-blue-500/20"
-                  >
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-1">Say this</span>
-                    <span className="text-sm leading-relaxed text-blue-200">
-                      {tip.replace(/^Ask:\s*/, '')}
-                    </span>
-                  </div>
-                ))}
-
-                {/* Checkable tips */}
-                {regularTips.map((tip, j) => {
-                  const key = `${i}-c${j}`;
-                  const isChecked = checked[key];
-                  return (
-                    <button
-                      key={`tip-${j}`}
-                      onClick={() => toggleCheck(key)}
-                      className={`w-full text-left flex gap-3 p-2.5 rounded-lg transition-all ${
-                        isChecked
-                          ? 'bg-emerald-500/5 opacity-50'
-                          : 'bg-white/[0.02] hover:bg-white/[0.04]'
-                      }`}
+                {card.tips.map((tip, j) => {
+                  const isAsk = tip.startsWith('Ask:');
+                  return isAsk ? (
+                    <div
+                      key={j}
+                      className="p-3 rounded-lg bg-blue-500/[0.06] border border-blue-500/20"
                     >
-                      <div className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
-                        isChecked
-                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                          : 'border-white/20 text-transparent'
-                      }`}>
-                        <span className="text-[10px]">{isChecked ? '\u2713' : ''}</span>
-                      </div>
-                      <span className={`text-sm leading-relaxed ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                        {tip}
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 block mb-1">Say this</span>
+                      <span className="text-sm leading-relaxed text-blue-200">
+                        {tip.replace(/^Ask:\s*/, '')}
                       </span>
-                    </button>
+                    </div>
+                  ) : (
+                    <div
+                      key={j}
+                      className="p-2.5 rounded-lg bg-white/[0.02] text-sm leading-relaxed text-slate-200"
+                    >
+                      {tip}
+                    </div>
                   );
                 })}
 
@@ -763,8 +725,7 @@ function ScriptPanel({ stageId, roleId }: { stageId: StageId; roleId: RoleId }) 
                   </button>
                 )}
               </div>
-              );
-            })()}
+            )}
           </div>
         );
       })}
