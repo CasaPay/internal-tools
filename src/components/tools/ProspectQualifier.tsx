@@ -5,9 +5,9 @@ import { useState, useMemo } from 'react';
 import {
   ChevronRight, ChevronLeft, BarChart3, ShieldCheck,
   AlertCircle, TrendingDown, Wallet, Users2,
-  CreditCard, GraduationCap, Briefcase, Globe,
-  Zap, LayoutGrid, Calendar, Info,
-  Home, Clock, MousePointer2
+  CreditCard, Zap, LayoutGrid, Info,
+  Home, Clock, Building2, Layers, Banknote,
+  ArrowRight
 } from 'lucide-react';
 
 const QuestionTooltip = ({ why, impact, position = 'top' }: { why: string; impact: string; position?: 'top' | 'bottom' }) => {
@@ -38,396 +38,477 @@ const STEPS = [
   { id: 'solution', title: 'Solution Value' },
 ];
 
-const QUESTIONS = [
+type SectionId = 'portfolio' | 'occupancy' | 'payments' | 'cashflow';
+
+interface QuestionDef {
+  key: string;
+  title: string;
+  icon: React.ElementType;
+  section: SectionId;
+  why: string;
+  impact: string;
+  options: { id: string; label: string }[];
+}
+
+const SECTIONS: { id: SectionId; label: string; color: string; accent: string; activeClass: string; dotClass: string }[] = [
+  { id: 'portfolio', label: 'Portfolio', color: 'text-slate-400', accent: 'border-slate-500/20', activeClass: 'bg-slate-500/10 border-slate-400/50 text-slate-50', dotClass: 'border-slate-400 bg-slate-400 shadow-[0_0_12px_rgba(148,163,184,0.6)]' },
+  { id: 'occupancy', label: 'Occupancy', color: 'text-amber-400', accent: 'border-amber-500/20', activeClass: 'bg-amber-500/10 border-amber-500/50 text-amber-50', dotClass: 'border-amber-400 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)]' },
+  { id: 'payments', label: 'Payments', color: 'text-blue-400', accent: 'border-blue-500/20', activeClass: 'bg-blue-500/10 border-blue-500/50 text-blue-50', dotClass: 'border-blue-400 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]' },
+  { id: 'cashflow', label: 'Cash Flow', color: 'text-rose-400', accent: 'border-rose-500/20', activeClass: 'bg-rose-500/10 border-rose-500/50 text-rose-50', dotClass: 'border-rose-400 bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.8)]' },
+];
+
+const QUESTIONS: QuestionDef[] = [
+  // Section A: Portfolio Context
   {
     key: 'portfolioSize',
     title: 'Portfolio Size',
     icon: LayoutGrid,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
+    section: 'portfolio',
     why: 'Determines total revenue opportunity and operational scale.',
     impact: 'Larger portfolios benefit more from automated collection and batch processing.',
     options: [
-      { id: '<100', label: '< 100 units', weight: 0 },
-      { id: '100-500', label: '100 - 500 units', weight: 5 },
-      { id: '500+', label: '500+ units', weight: 10 },
+      { id: '<100', label: '< 100 units' },
+      { id: '100-500', label: '100 – 500 units' },
+      { id: '500+', label: '500+ units' },
     ]
   },
   {
-    key: 'contractDuration',
-    title: 'Average Contract Duration',
-    icon: Calendar,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Measures tenant turnover velocity.',
-    impact: 'Shorter contracts mean higher admin burden; CasaPay automates the repeat screening and setup.',
+    key: 'ownershipModel',
+    title: 'Ownership Model',
+    icon: Building2,
+    section: 'portfolio',
+    why: 'Ownership structure determines which pain points hit hardest.',
+    impact: 'Operators who lease from investors face structurally higher cash flow risk — they must pay owners regardless of tenant timing.',
     options: [
-      { id: '<6m', label: '< 6 months', weight: 10 },
-      { id: '6-12m', label: '6 - 12 months', weight: 5 },
-      { id: '12+m', label: '12+ months', weight: 0 },
+      { id: 'own', label: 'Own buildings' },
+      { id: 'lease', label: 'Lease from investors' },
+      { id: 'manage', label: 'Manage for investors' },
+      { id: 'hybrid', label: 'Hybrid' },
     ]
   },
   {
-    key: 'tenants',
-    title: 'Local vs Foreigner Ratio',
-    icon: Globe,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Foreigners are often forced into massive upfront rent.',
-    impact: 'CasaPay eliminates the need for 6-12 month upfront payments, opening your property to a global market.',
+    key: 'tenantMix',
+    title: 'Tenant Demographics',
+    icon: Users2,
+    section: 'portfolio',
+    why: 'International/student tenants face deposit and guarantor barriers.',
+    impact: 'Higher proportion of international tenants = more friction in onboarding and higher vacancy risk.',
     options: [
-      { id: 'local', label: 'Mostly Local', weight: 0 },
-      { id: 'mixed', label: 'Balanced Mix', weight: 5 },
-      { id: 'foreigner', label: 'Foreigners', weight: 10 },
+      { id: 'local', label: 'Mostly local professionals' },
+      { id: 'mixed', label: 'Mixed' },
+      { id: 'international', label: 'Mostly international / students' },
     ]
   },
-  {
-    key: 'type',
-    title: 'Students vs Professionals',
-    icon: GraduationCap,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Students often lack credit history.',
-    impact: 'Our embedded screening replaces traditional credit checks, making student default risk manageable.',
-    options: [
-      { id: 'professionals', label: 'Professionals', weight: 0 },
-      { id: 'mixed', label: 'Balanced Mix', weight: 5 },
-      { id: 'students', label: 'Mostly Students', weight: 10 },
-    ]
-  },
+  // Section B: Occupancy Health
   {
     key: 'occupancyRate',
-    title: 'Occupancy Rate',
+    title: 'Current Occupancy',
     icon: Home,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Measures inventory efficiency.',
-    impact: 'High vacancy costs are often linked to friction in the deposit/onboarding flow.',
+    section: 'occupancy',
+    why: 'Measures inventory efficiency and revenue realization.',
+    impact: 'Every empty unit is lost revenue — often linked to friction in the deposit/onboarding flow.',
     options: [
-      { id: '<80', label: '< 80%', weight: 10 },
-      { id: '80-95', label: '80 - 95%', weight: 5 },
-      { id: '>95', label: '> 95%', weight: 0 },
+      { id: '<80', label: '< 80%' },
+      { id: '80-90', label: '80 – 90%' },
+      { id: '90+', label: '90%+' },
     ]
   },
   {
-    key: 'timeToContract',
-    title: 'Time to Contract',
+    key: 'voidDuration',
+    title: 'Average Void Period',
     icon: Clock,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Measures sales cycle velocity.',
-    impact: 'Reducing friction with CasaPay speeds up the move-in process and reduces empty room days.',
+    section: 'occupancy',
+    why: 'Measures how long units sit empty between tenancies.',
+    impact: 'Longer voids compound vacancy costs — reducing void periods has immediate revenue impact.',
     options: [
-      { id: '<7', label: '< 7 days', weight: 0 },
-      { id: '7-21', label: '7 - 21 days', weight: 5 },
-      { id: '>21', label: '> 21 days', weight: 10 },
+      { id: '<7', label: '< 7 days' },
+      { id: '7-21', label: '7 – 21 days' },
+      { id: '21+', label: '21+ days' },
     ]
   },
+  // Section C: Payment Operations
   {
-    key: 'payments',
-    title: 'Online Payments',
+    key: 'collectionMethod',
+    title: 'Rent Collection Method',
     icon: CreditCard,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Validates current tech stack.',
-    impact: 'Manual/Cash workflows are high-risk and labor-intensive; we provide a digital first-path.',
+    section: 'payments',
+    why: 'Reveals current automation level of payment operations.',
+    impact: 'Manual collection is labor-intensive and error-prone — each step not automated costs admin hours.',
     options: [
-      { id: 'cash', label: 'Manual (<30%)', weight: 10 },
-      { id: 'bank', label: 'Mixed (30-70%)', weight: 5 },
-      { id: 'online', label: 'Digital (>70%)', weight: 0 },
+      { id: 'manual', label: 'Manual (standing orders / bank transfers)' },
+      { id: 'semi', label: 'Semi-automated (GoCardless / DD)' },
+      { id: 'digital', label: 'Fully digital (Stripe / payment portal)' },
     ]
   },
   {
-    key: 'onlineBooking',
-    title: 'Online Booking Option',
-    icon: MousePointer2,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Measures conversion friction.',
-    impact: 'Manual bookings are the #1 bottleneck for scaling; CasaPay enables instant, digital-first onboarding.',
+    key: 'vendorStack',
+    title: 'Current Vendor Stack',
+    icon: Layers,
+    section: 'payments',
+    why: 'Multiple vendors = multiple contracts, logins, reconciliation points.',
+    impact: 'Consolidating payment + screening + deposits + guarantees into one platform reduces complexity and cost.',
     options: [
-      { id: 'no', label: 'No', weight: 10 },
-      { id: 'semi', label: 'Semi-automated', weight: 5 },
-      { id: 'fully', label: 'Fully automated', weight: 0 },
+      { id: '1', label: '1 vendor' },
+      { id: '2-3', label: '2 – 3 vendors' },
+      { id: '4+', label: '4+ vendors' },
     ]
   },
   {
-    key: 'pms',
-    title: 'PMS',
-    icon: Briefcase,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Determines technical maturity and integration path.',
-    impact: " 'No' or '3rd party' means our @casapay.me alias logic is perfect; 'In-house' suggests a robust direct API integration opportunity.",
-    options: [
-      { id: 'no', label: 'No', weight: 10 },
-      { id: '3rd-party', label: '3rd party', weight: 10 },
-      { id: 'in-house', label: 'In-house', weight: 15 },
-    ]
-  },
-  {
-    key: 'securityDeposit',
-    title: 'Security Deposit / Upfront Rent',
+    key: 'depositHandling',
+    title: 'Deposit Handling',
     icon: Wallet,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'High deposits are the #1 cause of tenant drop-off.',
-    impact: 'Reducing deposits increases your conversion rate and lead flow immediately.',
+    section: 'payments',
+    why: 'Deposit method affects tenant conversion and capital efficiency.',
+    impact: 'Government schemes lock up capital; large upfront deposits deter international tenants.',
     options: [
-      { id: 'low', label: '0 - 1 Month', weight: 10 },
-      { id: 'medium', label: '2 - 3 Months', weight: 5 },
-      { id: 'high', label: '4+ Months', weight: 0 },
+      { id: 'dps', label: 'Government scheme (DPS)' },
+      { id: 'third-party', label: 'Third-party (Flatfair / Housing Hand)' },
+      { id: 'none', label: 'No deposits' },
+      { id: 'large', label: 'Large upfront (3+ months)' },
     ]
   },
+  // Section D: Cash Flow Health
   {
-    key: 'latePayers',
-    title: 'Late Payers %',
+    key: 'latePaymentRate',
+    title: 'Late Payment Rate',
     icon: TrendingDown,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Measures operational drag.',
-    impact: 'We guarantee on-time payouts, removing the need for manual debt collection and follow-ups.',
+    section: 'cashflow',
+    why: 'Late payments create cash flow drag and admin overhead.',
+    impact: 'Every late payment is interest-free credit given to the tenant — and a collection cost for you.',
     options: [
-      { id: 'low', label: '< 5% (Low)', weight: 0 },
-      { id: 'medium', label: '5 - 15% (Mod)', weight: 5 },
-      { id: 'high', label: '> 15% (High)', weight: 10 },
+      { id: '<5', label: '< 5%' },
+      { id: '5-15', label: '5 – 15%' },
+      { id: '15+', label: '15%+' },
     ]
   },
   {
-    key: 'defaultRate',
-    title: 'Default %',
-    icon: AlertCircle,
-    color: 'text-slate-400',
-    bg: 'bg-slate-500/20',
-    activeClass: 'bg-emerald-500/10 border-emerald-500/50 text-emerald-50',
-    dotClass: 'border-emerald-400 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]',
-    why: 'Direct hit to NOI (Net Operating Income).',
-    impact: 'CasaPay covers the loss, ensuring your cashflow is protected even if a tenant defaults.',
+    key: 'cashFlowPressure',
+    title: 'Cash Flow Pressure',
+    icon: Banknote,
+    section: 'cashflow',
+    why: 'Cash flow pressure indicates how urgently guaranteed payouts are needed.',
+    impact: 'Operators with investor obligations face structural cash flow risk that payment timing can\'t solve.',
     options: [
-      { id: 'low', label: '< 1% (Low)', weight: 0 },
-      { id: 'medium', label: '1 - 3% (Mod)', weight: 5 },
-      { id: 'high', label: '> 3% (High)', weight: 10 },
+      { id: 'comfortable', label: 'Comfortable' },
+      { id: 'some', label: 'Some pressure (seasonal gaps)' },
+      { id: 'significant', label: 'Significant (must pay owners regardless)' },
     ]
-  }
+  },
 ];
+
+type PillarId = 'occupancy' | 'paymentOps' | 'cashFlow';
+
+interface PillarScores {
+  occupancy: number;
+  paymentOps: number;
+  cashFlow: number;
+  primary: PillarId;
+  fitScore: number;
+}
+
+function computePillarScores(answers: Record<string, string>): PillarScores {
+  // Occupancy score
+  let occupancy = 0;
+  if (answers.occupancyRate === '<80') occupancy += 50;
+  else if (answers.occupancyRate === '80-90') occupancy += 25;
+  if (answers.voidDuration === '21+') occupancy += 30;
+  else if (answers.voidDuration === '7-21') occupancy += 15;
+  if (answers.tenantMix === 'international') occupancy += 20;
+  else if (answers.tenantMix === 'mixed') occupancy += 10;
+  if (answers.ownershipModel === 'own') occupancy += 10;
+
+  // Payment Ops score
+  let paymentOps = 0;
+  if (answers.collectionMethod === 'manual') paymentOps += 40;
+  else if (answers.collectionMethod === 'semi') paymentOps += 20;
+  if (answers.vendorStack === '4+') paymentOps += 30;
+  else if (answers.vendorStack === '2-3') paymentOps += 15;
+  if (answers.depositHandling === 'dps') paymentOps += 20;
+  else if (answers.depositHandling === 'large') paymentOps += 15;
+  else if (answers.depositHandling === 'third-party') paymentOps += 10;
+  if (answers.ownershipModel === 'manage') paymentOps += 10;
+
+  // Cash Flow score
+  let cashFlow = 0;
+  if (answers.latePaymentRate === '15+') cashFlow += 40;
+  else if (answers.latePaymentRate === '5-15') cashFlow += 20;
+  if (answers.cashFlowPressure === 'significant') cashFlow += 40;
+  else if (answers.cashFlowPressure === 'some') cashFlow += 20;
+  if (answers.ownershipModel === 'lease') cashFlow += 20;
+  else if (answers.ownershipModel === 'hybrid') cashFlow += 10;
+
+  // Primary pain — tie-break: cashFlow > paymentOps > occupancy
+  let primary: PillarId = 'cashFlow';
+  if (occupancy > paymentOps && occupancy > cashFlow) primary = 'occupancy';
+  else if (paymentOps > occupancy && paymentOps > cashFlow) primary = 'paymentOps';
+  else if (cashFlow >= paymentOps && cashFlow >= occupancy) primary = 'cashFlow';
+  else if (paymentOps >= occupancy) primary = 'paymentOps';
+
+  // Sort pillars by score descending
+  const sorted = [
+    { id: 'occupancy' as PillarId, score: occupancy },
+    { id: 'paymentOps' as PillarId, score: paymentOps },
+    { id: 'cashFlow' as PillarId, score: cashFlow },
+  ].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    // Tie-break order
+    const order: PillarId[] = ['cashFlow', 'paymentOps', 'occupancy'];
+    return order.indexOf(a.id) - order.indexOf(b.id);
+  });
+
+  // Weighted average: primary 50%, secondary 30%, tertiary 20%
+  const fitScore = Math.min(100, Math.round(
+    sorted[0].score * 0.5 + sorted[1].score * 0.3 + sorted[2].score * 0.2
+  ));
+
+  return { occupancy, paymentOps, cashFlow, primary, fitScore };
+}
+
+const PILLAR_LABELS: Record<PillarId, string> = {
+  occupancy: 'Occupancy Challenge',
+  paymentOps: 'Payment Ops Challenge',
+  cashFlow: 'Cash Flow Challenge',
+};
+
+const PILLAR_COLORS: Record<PillarId, { text: string; bg: string; border: string; bar: string }> = {
+  occupancy: { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/40', bar: 'bg-amber-500' },
+  paymentOps: { text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/40', bar: 'bg-blue-500' },
+  cashFlow: { text: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/40', bar: 'bg-rose-500' },
+};
+
+const OWNERSHIP_LABELS: Record<string, string> = {
+  own: 'Developer/Owner',
+  lease: 'Operator (leases)',
+  manage: 'Property Manager',
+  hybrid: 'Hybrid',
+};
+
+const OWNERSHIP_INSIGHTS: Record<string, string> = {
+  own: 'Owns buildings → occupancy risk elevated (must fill to justify capex)',
+  lease: 'Leases from investors → cash flow risk elevated (must pay owners regardless)',
+  manage: 'Manages for investors → payment ops efficiency is critical',
+  hybrid: 'Hybrid model → both occupancy and cash flow pressures',
+};
+
+const TIER_INFO: Record<PillarId, { name: string; rate: string; tagline: string; features: string[]; }> = {
+  occupancy: {
+    name: 'COVER',
+    rate: '1.5%',
+    tagline: 'Guarantee + deposit elimination opens new tenant demographics',
+    features: [
+      'Everything in PAYMENTS',
+      'Rent guarantee — covered if tenant defaults',
+      'Deposit elimination — remove barriers for international tenants',
+      'Credit building — tenants build credit history through rent',
+    ],
+  },
+  paymentOps: {
+    name: 'PAYMENTS',
+    rate: '1.0%',
+    tagline: 'Collection + screening + automation in one platform',
+    features: [
+      'AI invoicing gateway — zero manual work',
+      'Automated rent collection & reminders',
+      'Tenant screening integrated',
+      'Email alias integration (@casapay.me)',
+    ],
+  },
+  cashFlow: {
+    name: 'ON-TIME',
+    rate: '2.5%',
+    tagline: 'Guaranteed payout on due date, regardless of tenant timing',
+    features: [
+      'Everything in COVER',
+      'Guaranteed payout on the 1st — no matter when tenants pay',
+      'Cash flow protection — eliminate receivables risk',
+      'Predictable revenue for investor reporting',
+    ],
+  },
+};
 
 export default function ProspectQualifier() {
   const [currentStep, setCurrentStep] = useState(0);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({
-    payments: '',
-    tenants: '',
-    type: '',
-    securityDeposit: '',
-    latePayers: '',
-    defaultRate: '',
+  const [answers, setAnswers] = useState<Record<string, string>>({
     portfolioSize: '',
-    contractDuration: '',
+    ownershipModel: '',
+    tenantMix: '',
     occupancyRate: '',
-    timeToContract: '',
-    onlineBooking: '',
-    pms: ''
+    voidDuration: '',
+    collectionMethod: '',
+    vendorStack: '',
+    depositHandling: '',
+    latePaymentRate: '',
+    cashFlowPressure: '',
   });
 
   const handleAnswer = (key: string, value: string, index: number) => {
     setAnswers(prev => ({ ...prev, [key]: value }));
     if (index === activeQuestionIndex) {
-      setActiveQuestionIndex(prev => Math.min(prev + 1, 11));
+      setActiveQuestionIndex(prev => Math.min(prev + 1, QUESTIONS.length - 1));
     }
   };
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
 
-  const fitScore = useMemo(() => {
-    let score = 10;
-    if (answers.payments === 'cash') score += 10;
-    if (answers.payments === 'bank') score += 5;
+  const pillarScores = useMemo(() => computePillarScores(answers), [answers]);
 
-    if (answers.tenants === 'foreigner') score += 10;
-    if (answers.tenants === 'mixed') score += 5;
-
-    if (answers.type === 'students') score += 10;
-    if (answers.type === 'mixed') score += 5;
-
-    if (answers.securityDeposit === 'low') score += 10;
-    if (answers.securityDeposit === 'medium') score += 5;
-
-    if (answers.latePayers === 'high') score += 10;
-    if (answers.latePayers === 'medium') score += 5;
-
-    if (answers.defaultRate === 'high') score += 10;
-    if (answers.defaultRate === 'medium') score += 5;
-
-    if (answers.portfolioSize === '500+') score += 10;
-    if (answers.portfolioSize === '100-500') score += 5;
-
-    if (answers.contractDuration === '<6m') score += 10;
-    if (answers.contractDuration === '6-12m') score += 5;
-
-    if (answers.occupancyRate === '<80') score += 10;
-    if (answers.occupancyRate === '80-95') score += 5;
-
-    if (answers.timeToContract === '>21') score += 10;
-    if (answers.timeToContract === '7-21') score += 5;
-
-    if (answers.onlineBooking === 'no') score += 10;
-    if (answers.onlineBooking === 'semi') score += 5;
-
-    if (answers.pms === 'no' || answers.pms === '3rd-party') score += 10;
-    if (answers.pms === 'in-house') score += 15;
-
-    return Math.min(score, 100);
-  }, [answers]);
+  const scale = answers.portfolioSize === '500+' ? 10 : answers.portfolioSize === '100-500' ? 3 : 1;
+  const avgRent = 850; // EUR/month assumed average
 
   const renderStep = () => {
     switch (currentStep) {
       case 0:
         return (
           <div className="flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
+            {/* Left sidebar */}
             <div className="lg:w-80 shrink-0 flex flex-col items-center justify-center glass-card p-6 rounded-3xl border border-white/10 bg-white/5">
+              {/* Fit Score gauge */}
               <div className="relative w-48 h-48 flex items-center justify-center mb-6">
                 <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
                   <circle
-                    cx="96"
-                    cy="96"
-                    r="88"
-                    stroke="currentColor"
-                    strokeWidth="12"
-                    fill="transparent"
-                    className="text-white/5"
-                  />
-                  <circle
-                    cx="96"
-                    cy="96"
-                    r="88"
-                    stroke="currentColor"
-                    strokeWidth="12"
-                    fill="transparent"
+                    cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent"
                     strokeDasharray={2 * Math.PI * 88}
-                    strokeDashoffset={2 * Math.PI * 88 * (1 - fitScore / 100)}
-                    className={`${fitScore > 75 ? 'text-emerald-500' : fitScore > 50 ? 'text-blue-500' : 'text-amber-500'} transition-all duration-1000 ease-out`}
+                    strokeDashoffset={2 * Math.PI * 88 * (1 - pillarScores.fitScore / 100)}
+                    className={`${pillarScores.fitScore > 75 ? 'text-emerald-500' : pillarScores.fitScore > 50 ? 'text-blue-500' : 'text-amber-500'} transition-all duration-1000 ease-out`}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl font-black text-white">{fitScore}</span>
+                  <span className="text-5xl font-black text-white">{pillarScores.fitScore}</span>
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Fit Score</span>
                 </div>
-                <div className={`absolute -inset-2 rounded-full blur-2xl opacity-20 ${fitScore > 75 ? 'bg-emerald-500' : fitScore > 50 ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                <div className={`absolute -inset-2 rounded-full blur-2xl opacity-20 ${pillarScores.fitScore > 75 ? 'bg-emerald-500' : pillarScores.fitScore > 50 ? 'bg-blue-500' : 'bg-amber-500'}`} />
               </div>
 
-              <div className="text-center w-full">
-                <h3 className="text-lg font-black text-white mb-2 uppercase tracking-tight">
-                  {fitScore > 75 ? "Highly Qualified" : fitScore > 50 ? "Solid Candidate" : "Moderate Value"}
-                </h3>
-                <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-6">
-                  {fitScore > 75 ? "Priority: HIGH. Recommended immediate engagement." : "Focus on highlighting automation and guarantee features."}
-                </p>
-
-                <div className="grid grid-cols-2 gap-2 w-full">
-                  {[
-                    { label: 'Scale Potential', val: answers.portfolioSize === '500+' ? 'Huge' : answers.portfolioSize === '100-500' ? 'High' : 'Med', color: 'text-indigo-400' },
-                    { label: 'Ops Velocity', val: answers.contractDuration === '<6m' ? 'Fast' : 'Stable', color: 'text-pink-400' },
-                    { label: 'Risk Profile', val: answers.defaultRate === 'high' ? 'High' : answers.defaultRate === 'medium' ? 'Mod' : 'Low', color: 'text-amber-400' },
-                    { label: 'Dealflow', val: answers.portfolioSize === '500+' ? 'Ent' : 'Mid', color: 'text-emerald-400' },
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-white/5 border border-white/5 p-2 rounded-xl text-center">
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{stat.label}</p>
-                        <p className={`text-[10px] font-bold ${stat.color}`}>{stat.val}</p>
+              {/* Pillar bars */}
+              <div className="w-full space-y-3 mb-5">
+                {([
+                  { id: 'occupancy' as PillarId, label: 'Occupancy Pain', score: pillarScores.occupancy },
+                  { id: 'paymentOps' as PillarId, label: 'Payment Ops Pain', score: pillarScores.paymentOps },
+                  { id: 'cashFlow' as PillarId, label: 'Cash Flow Pain', score: pillarScores.cashFlow },
+                ]).map(p => (
+                  <div key={p.id} className="space-y-1">
+                    <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
+                      <span className={PILLAR_COLORS[p.id].text}>{p.label}</span>
+                      <span className="text-slate-400">{p.score}/100</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
-              {QUESTIONS.map((q, i) => {
-                const isVisible = i <= activeQuestionIndex;
-                const Icon = q.icon;
-
-                if (!isVisible) {
-                  return (
-                    <div key={q.key} className="glass-card p-2 rounded-xl border border-white/5 bg-white/[0.01] h-[163px] flex items-center justify-center transition-all duration-500">
-                       <div className="w-16 h-16 rounded-full border border-white/20 flex flex-col items-center justify-center bg-white/5">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Step</span>
-                          <span className="text-xl font-black text-slate-400">{String(i + 1).padStart(2, '0')}</span>
-                       </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div key={q.key} className="glass-card p-2 rounded-xl border border-white/10 bg-white/5 relative hover:z-[100] transition-all animate-in zoom-in duration-500">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 ${q.bg} rounded-lg ${q.color}`}>
-                          <Icon size={16} />
-                        </div>
-                        <h3 className="text-xs font-black text-slate-200 uppercase tracking-tight">{q.title}</h3>
-                      </div>
-                      <QuestionTooltip
-                        why={q.why}
-                        impact={q.impact}
-                        position={i < 6 ? 'bottom' : 'top'}
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <div
+                        className={`h-full ${PILLAR_COLORS[p.id].bar} transition-all duration-700 ease-out rounded-full`}
+                        style={{ width: `${p.score}%` }}
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      {q.options.map(opt => (
-                        <label
-                          key={opt.id}
-                          className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${
-                            answers[q.key as keyof typeof answers] === opt.id
-                              ? q.activeClass
-                              : 'bg-white/5 border-transparent text-slate-400 hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold leading-tight">{opt.label}</span>
-                            <span className={`text-[8px] font-black px-1 py-0.5 rounded-md ${
-                              answers[q.key as keyof typeof answers] === opt.id
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : opt.weight > 0 ? 'bg-slate-500/10 text-slate-400' : 'bg-white/5 text-slate-500'
-                            }`}>
-                              +{opt.weight}
-                            </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Primary pain badge */}
+              <div className={`w-full px-3 py-2 rounded-xl ${PILLAR_COLORS[pillarScores.primary].bg} ${PILLAR_COLORS[pillarScores.primary].border} border text-center mb-3`}>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Primary Pain</p>
+                <p className={`text-xs font-black ${PILLAR_COLORS[pillarScores.primary].text}`}>
+                  {PILLAR_LABELS[pillarScores.primary]}
+                </p>
+              </div>
+
+              {/* Ownership model indicator */}
+              {answers.ownershipModel && (
+                <div className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-center">
+                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Ownership</p>
+                  <p className="text-[10px] text-slate-300 font-medium leading-tight">
+                    {OWNERSHIP_INSIGHTS[answers.ownershipModel]}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Question grid */}
+            <div className="flex-1 space-y-4">
+              {SECTIONS.map(section => {
+                const sectionQuestions = QUESTIONS.map((q, globalIdx) => ({ ...q, globalIdx })).filter(q => q.section === section.id);
+                if (sectionQuestions.length === 0) return null;
+
+                return (
+                  <div key={section.id}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${section.id === 'portfolio' ? 'bg-slate-400' : section.id === 'occupancy' ? 'bg-amber-400' : section.id === 'payments' ? 'bg-blue-400' : 'bg-rose-400'}`} />
+                      <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${section.color}`}>{section.label}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                      {sectionQuestions.map(q => {
+                        const i = q.globalIdx;
+                        const isVisible = i <= activeQuestionIndex;
+                        const Icon = q.icon;
+                        const isAnswered = !!answers[q.key];
+
+                        // Determine if this question contributes to its pillar's pain
+                        const pillarActive = section.id === 'occupancy' ? pillarScores.occupancy > 20
+                          : section.id === 'payments' ? pillarScores.paymentOps > 20
+                          : section.id === 'cashflow' ? pillarScores.cashFlow > 20
+                          : false;
+
+                        const sectionStyle = section.id === 'portfolio'
+                          ? { activeClass: section.activeClass, dotClass: section.dotClass, borderHover: 'hover:border-slate-400/30 hover:bg-slate-500/5' }
+                          : { activeClass: section.activeClass, dotClass: section.dotClass, borderHover: section.id === 'occupancy' ? 'hover:border-amber-500/30 hover:bg-amber-500/5' : section.id === 'payments' ? 'hover:border-blue-500/30 hover:bg-blue-500/5' : 'hover:border-rose-500/30 hover:bg-rose-500/5' };
+
+                        if (!isVisible) {
+                          return (
+                            <div key={q.key} className="glass-card p-2 rounded-xl border border-white/5 bg-white/[0.01] h-[163px] flex items-center justify-center transition-all duration-500">
+                              <div className="w-16 h-16 rounded-full border border-white/20 flex flex-col items-center justify-center bg-white/5">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Step</span>
+                                <span className="text-xl font-black text-slate-400">{String(i + 1).padStart(2, '0')}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={q.key}
+                            className={`glass-card p-2 rounded-xl border bg-white/5 relative hover:z-[100] transition-all animate-in zoom-in duration-500 ${
+                              isAnswered && pillarActive && section.id !== 'portfolio' ? section.accent : 'border-white/10'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`p-1.5 rounded-lg ${section.id === 'portfolio' ? 'bg-slate-500/20 text-slate-400' : section.id === 'occupancy' ? 'bg-amber-500/20 text-amber-400' : section.id === 'payments' ? 'bg-blue-500/20 text-blue-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                  <Icon size={16} />
+                                </div>
+                                <h3 className="text-xs font-black text-slate-200 uppercase tracking-tight">{q.title}</h3>
+                              </div>
+                              <QuestionTooltip why={q.why} impact={q.impact} position={i < 5 ? 'bottom' : 'top'} />
+                            </div>
+                            <div className="space-y-1.5">
+                              {q.options.map(opt => (
+                                <label
+                                  key={opt.id}
+                                  className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${
+                                    answers[q.key] === opt.id
+                                      ? sectionStyle.activeClass
+                                      : `bg-white/5 border-transparent text-slate-400 ${sectionStyle.borderHover}`
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-bold leading-tight">{opt.label}</span>
+                                  </div>
+                                  <input
+                                    type="radio"
+                                    name={q.key}
+                                    className="hidden"
+                                    checked={answers[q.key] === opt.id}
+                                    onChange={() => handleAnswer(q.key, opt.id, i)}
+                                  />
+                                  <div className={`w-3 h-3 rounded-full border-2 ${
+                                    answers[q.key] === opt.id ? sectionStyle.dotClass : 'border-slate-600'
+                                  }`} />
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                          <input
-                            type="radio"
-                            name={q.key}
-                            className="hidden"
-                            checked={answers[q.key as keyof typeof answers] === opt.id}
-                            onChange={() => handleAnswer(q.key, opt.id, i)}
-                          />
-                          <div className={`w-3 h-3 rounded-full border-2 ${
-                            answers[q.key as keyof typeof answers] === opt.id
-                              ? q.dotClass
-                              : 'border-slate-600'
-                          }`} />
-                        </label>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -435,150 +516,181 @@ export default function ProspectQualifier() {
             </div>
           </div>
         );
-      case 1:
-        const isHighLate = answers.latePayers === 'high';
-        const isMedLate = answers.latePayers === 'medium';
-        const isHighDefault = answers.defaultRate === 'high';
-        const isMedDefault = answers.defaultRate === 'medium';
-        const isLowOccupancy = answers.occupancyRate === '<80';
-        const isMedOccupancy = answers.occupancyRate === '80-95';
-        const isSlowContract = answers.timeToContract === '>21';
-        const isMedContract = answers.timeToContract === '7-21';
-        const isManualBooking = answers.onlineBooking === 'no';
-        const isSemiBooking = answers.onlineBooking === 'semi';
 
-        const scale = answers.portfolioSize === '500+' ? 10 : answers.portfolioSize === '100-500' ? 3 : 1;
-        const baseLeakage = (isHighDefault ? 85000 : isMedDefault ? 45000 : 12000) * scale;
-        const vacancyLeakage = (isLowOccupancy ? 50000 : isMedOccupancy ? 20000 : 0) * scale;
-        const speedLeakage = (isSlowContract ? 30000 : isMedContract ? 10000 : 0) * scale;
-        const bookingLeakage = (isManualBooking ? 15000 : isSemiBooking ? 5000 : 0) * scale;
-        const leakage = baseLeakage + vacancyLeakage + speedLeakage + bookingLeakage;
+      case 1: {
+        const primary = pillarScores.primary;
+        const unitCount = answers.portfolioSize === '500+' ? 750 : answers.portfolioSize === '100-500' ? 300 : 80;
 
-        const adminHours = Math.round((answers.portfolioSize === '500+' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20) * (isHighLate ? 1.5 : 1) * (isSlowContract ? 1.2 : 1) * (isManualBooking ? 1.3 : isSemiBooking ? 1.1 : 1));
+        // Revenue impact calculations
+        const voidDays = answers.voidDuration === '21+' ? 28 : answers.voidDuration === '7-21' ? 14 : 5;
+        const occupancyPct = answers.occupancyRate === '<80' ? 0.75 : answers.occupancyRate === '80-90' ? 0.85 : 0.94;
+        const vacancyLoss = Math.round(unitCount * (1 - occupancyPct) * avgRent * 12);
+        const voidLoss = Math.round(unitCount * 0.3 * (voidDays / 30) * avgRent); // 30% turnover annually
+
+        const lateRate = answers.latePaymentRate === '15+' ? 0.20 : answers.latePaymentRate === '5-15' ? 0.10 : 0.03;
+        const cashFlowDrag = Math.round(unitCount * avgRent * lateRate * 12 * 0.15); // 15% cost of late = interest + admin
+
+        const adminHoursBase = answers.portfolioSize === '500+' ? 160 : answers.portfolioSize === '100-500' ? 60 : 20;
+        const manualMultiplier = answers.collectionMethod === 'manual' ? 1.5 : answers.collectionMethod === 'semi' ? 1.2 : 1;
+        const vendorMultiplier = answers.vendorStack === '4+' ? 1.3 : answers.vendorStack === '2-3' ? 1.1 : 1;
+        const adminHours = Math.round(adminHoursBase * manualMultiplier * vendorMultiplier);
+
+        const vendorCostMonthly = answers.vendorStack === '4+' ? unitCount * 8 : answers.vendorStack === '2-3' ? unitCount * 5 : unitCount * 2;
+
+        // Pain-specific narratives
+        const narratives: Record<PillarId, string> = {
+          occupancy: `You're losing approximately €${vacancyLoss.toLocaleString()}/year to vacant units. With ${answers.voidDuration === '21+' ? '21+' : answers.voidDuration === '7-21' ? '7–21' : '<7'} day average voids and ${answers.occupancyRate === '<80' ? 'sub-80%' : answers.occupancyRate === '80-90' ? '80–90%' : '90%+'} occupancy, every empty day costs you €${Math.round(avgRent / 30)}/unit. ${answers.tenantMix === 'international' ? 'International tenants can\'t access your properties due to deposit and guarantor barriers.' : ''}`,
+          paymentOps: `You're running ${answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1'} separate systems to handle what should be one workflow. Manual collection costs your team ~${adminHours}h/month in reconciliation and chasing. ${answers.depositHandling === 'dps' ? 'Deposit compliance alone ties up capital in government schemes.' : ''}`,
+          cashFlow: `With ${answers.latePaymentRate === '15+' ? '15%+' : answers.latePaymentRate === '5-15' ? '5–15%' : '<5%'} late payments and ${answers.cashFlowPressure === 'significant' ? 'significant cash flow pressure' : answers.cashFlowPressure === 'some' ? 'seasonal cash flow gaps' : 'manageable cash flow'}, you're giving tenants interest-free credit while your obligations don't wait. That's approximately €${cashFlowDrag.toLocaleString()}/year in cash flow drag.`,
+        };
+
+        const impactCards: Record<PillarId, { label: string; val: string; desc: string }[]> = {
+          occupancy: [
+            { label: 'Vacancy Cost', val: `€${vacancyLoss.toLocaleString()}/yr`, desc: 'Lost revenue from empty units' },
+            { label: 'Void Days', val: `${voidDays} avg`, desc: `€${Math.round(avgRent / 30)}/unit/day lost` },
+            { label: 'Conversion Risk', val: answers.tenantMix === 'international' ? 'High' : 'Moderate', desc: 'Deposit barriers blocking potential tenants' },
+          ],
+          paymentOps: [
+            { label: 'Admin Hours/Mo', val: `${adminHours}h`, desc: 'Manual reconciliation & vendor management' },
+            { label: 'Vendor Costs', val: `€${vendorCostMonthly.toLocaleString()}/mo`, desc: `${answers.vendorStack === '4+' ? '4+' : answers.vendorStack === '2-3' ? '2–3' : '1'} platform(s) × per-unit fees` },
+            { label: 'Error Risk', val: answers.collectionMethod === 'manual' ? 'High' : 'Moderate', desc: 'Manual processes = reconciliation gaps' },
+          ],
+          cashFlow: [
+            { label: 'Cash Flow Drag', val: `€${cashFlowDrag.toLocaleString()}/yr`, desc: 'Cost of late payments (interest + admin)' },
+            { label: 'Late Rate', val: `${Math.round(lateRate * 100)}%`, desc: 'Tenants paying after due date' },
+            { label: 'Obligation Risk', val: answers.ownershipModel === 'lease' ? 'Critical' : answers.cashFlowPressure === 'significant' ? 'High' : 'Moderate', desc: 'Gap between inflows and fixed outflows' },
+          ],
+        };
 
         return (
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-1 glass-card p-8 rounded-3xl border border-white/10 bg-white/5 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-10">
-                   <BarChart3 size={120} />
-                </div>
-                <h3 className="text-xl font-black text-white mb-6 uppercase tracking-tight">Cashflow Today</h3>
+            {/* Hero: pain diagnosis */}
+            <div className="glass-card p-8 rounded-3xl border border-white/10 bg-white/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <BarChart3 size={140} />
+              </div>
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${PILLAR_COLORS[primary].bg} ${PILLAR_COLORS[primary].border} border mb-4`}>
+                <AlertCircle size={12} className={PILLAR_COLORS[primary].text} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${PILLAR_COLORS[primary].text}`}>{PILLAR_LABELS[primary]}</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
+                Your #1 challenge: {PILLAR_LABELS[primary]}
+              </h2>
+              <p className="text-sm text-slate-300 leading-relaxed max-w-3xl font-medium">
+                {narratives[primary]}
+              </p>
+            </div>
 
-                <div className="space-y-6">
-                   <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                         <span>Collected on Time</span>
-                         <span className="text-slate-200">{isHighLate ? '65%' : isMedLate ? '80%' : '92%'}</span>
-                      </div>
-                      <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                         <div className={`h-full bg-slate-400 ${isHighLate ? 'w-[65%]' : isMedLate ? 'w-[80%]' : 'w-[92%]'} shadow-[0_0_12px_rgba(148,163,184,0.4)]`} />
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                         <span>Late Payments (30+ days)</span>
-                         <span className="text-slate-300">{isHighLate ? '25%' : isMedLate ? '15%' : '7%'}</span>
-                      </div>
-                      <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                         <div className={`h-full bg-slate-500 ${isHighLate ? 'w-[25%]' : isMedLate ? 'w-[15%]' : 'w-[7%]'} shadow-[0_0_12px_rgba(100,116,139,0.4)]`} />
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                         <span>Default / Bad Debt</span>
-                         <span className="text-slate-400">{isHighDefault ? '10%' : isMedDefault ? '5%' : '1%'}</span>
-                      </div>
-                      <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                         <div className={`h-full bg-slate-600 ${isHighDefault ? 'w-[10%]' : isMedDefault ? 'w-[5%]' : 'w-[1%]'} shadow-[0_0_12px_rgba(71,85,105,0.4)]`} />
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                         <span>Vacancy / Velocity Loss</span>
-                         <span className="text-slate-500">{isLowOccupancy ? '25%' : isMedOccupancy ? '12%' : '4%'}</span>
-                      </div>
-                      <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                         <div className={`h-full bg-slate-700 ${isLowOccupancy ? 'w-[25%]' : isMedOccupancy ? 'w-[12%]' : 'w-[4%]'} shadow-[0_0_12px_rgba(51,65,85,0.4)]`} />
-                      </div>
-                   </div>
-                </div>
-
-                <div className="mt-10 p-6 rounded-2xl bg-white/5 border border-white/10">
-                   <div className="flex items-start gap-4">
-                      <AlertCircle className="text-slate-400 shrink-0 mt-1" size={20} />
-                      <div>
-                        <p className="text-sm font-bold text-slate-200">Revenue Leakage Detected</p>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                          Your current model loses approximately <span className="text-slate-200 font-black">&euro;{leakage.toLocaleString()} / year</span> in interest-free credit given to tenants and recovery costs.
-                        </p>
-                      </div>
-                   </div>
+            {/* Ownership callout for lease operators */}
+            {answers.ownershipModel === 'lease' && (
+              <div className="p-5 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex items-start gap-4">
+                <Building2 className="text-rose-400 shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="text-sm font-bold text-rose-300">Structural Cash Flow Risk</p>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    As an operator leasing from investors, your cash flow risk is structurally higher — you must pay owners on the 1st regardless of when tenants pay. This makes guaranteed payouts critical, not optional.
+                  </p>
                 </div>
               </div>
+            )}
 
-              <div className="w-full md:w-80 space-y-4">
-                 {[
-                   { label: 'Admin Hours/Mo', val: `${adminHours}h`, desc: 'Manual reconciliation & chasing' },
-                   { label: 'Collection Cost', val: `\u20AC${(scale * 1200).toLocaleString()}`, desc: 'Processing fees & manual labor' },
-                   { label: 'Tenant Friction', val: answers.contractDuration === '<6m' ? 'Extreme' : 'High', desc: 'Due to manual payment chasing' },
-                 ].map((card, i) => (
-                   <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
-                      <p className="text-2xl font-black text-white">{card.val}</p>
-                      <p className="text-[10px] text-slate-400 mt-2">{card.desc}</p>
-                   </div>
-                 ))}
-              </div>
+            {/* Impact cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {impactCards[primary].map((card, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
+                  <p className="text-2xl font-black text-white">{card.val}</p>
+                  <p className="text-[10px] text-slate-400 mt-2">{card.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         );
-      case 2:
+      }
+
+      case 2: {
+        const primary = pillarScores.primary;
+        const tier = TIER_INFO[primary];
+        const unitCount = answers.portfolioSize === '500+' ? 750 : answers.portfolioSize === '100-500' ? 300 : 80;
+
+        // Savings calculation
+        const currentMultiVendorCost = answers.vendorStack === '4+' ? unitCount * 8 : answers.vendorStack === '2-3' ? unitCount * 5 : unitCount * 3;
+        const casapayRate = primary === 'cashFlow' ? 0.025 : primary === 'occupancy' ? 0.015 : 0.01;
+        const casapayCost = Math.round(unitCount * avgRent * casapayRate);
+        const monthlySaving = Math.max(0, currentMultiVendorCost - casapayCost);
+
+        // Deposit capital released (for COVER and ON-TIME)
+        const depositCapital = primary !== 'paymentOps' ? Math.round(unitCount * avgRent * 1.5) : 0; // ~1.5 months avg deposit
+
         return (
-          <div className="flex flex-col items-center justify-center h-full space-y-12 animate-in fade-in slide-in-from-top-4 duration-700">
-             <div className="text-center space-y-4 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-500/10 rounded-full border border-slate-500/30 mb-2">
-                   <ShieldCheck size={14} className="text-slate-400" />
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">The CasaPay Advantage</span>
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">Zero-Risk Cashflow</h2>
-                <p className="text-slate-400 text-lg font-medium leading-relaxed">
-                  We guarantee your rent hits your account on the 1st of every month, no matter when or how the tenant pays.
-                </p>
-             </div>
+          <div className="flex flex-col items-center justify-center h-full space-y-10 animate-in fade-in slide-in-from-top-4 duration-700">
+            {/* Tier recommendation hero */}
+            <div className="text-center space-y-4 max-w-2xl">
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${PILLAR_COLORS[primary].bg} ${PILLAR_COLORS[primary].border} border mb-2`}>
+                <ShieldCheck size={14} className={PILLAR_COLORS[primary].text} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${PILLAR_COLORS[primary].text}`}>Recommended Tier</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                {tier.name} <span className="text-slate-500">({tier.rate})</span>
+              </h2>
+              <p className="text-slate-400 text-lg font-medium leading-relaxed">
+                {tier.tagline}
+              </p>
+              <p className="text-slate-500 text-sm">
+                Based on your <span className={PILLAR_COLORS[primary].text}>{PILLAR_LABELS[primary].toLowerCase()}</span>
+                {answers.ownershipModel && <> and <span className="text-slate-300">{OWNERSHIP_LABELS[answers.ownershipModel]?.toLowerCase()}</span> model</>}
+              </p>
+              {answers.portfolioSize === '500+' && (
+                <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest">Enterprise pricing available for 500+ units</p>
+              )}
+            </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-                {[
-                  { title: '100% Guaranteed', desc: 'Full rent protection against tenant defaults and late payments.', icon: ShieldCheck, color: 'text-slate-400' },
-                  { title: 'Automated Admin', desc: 'Eliminate manual reconciliation with automated bank-grade sync.', icon: Zap, color: 'text-slate-400' },
-                  { title: 'Global Coverage', desc: 'Seamlessly accept payments from international students and expats.', icon: Globe, color: 'text-slate-400' },
-                  {
-                    title: 'Integration Path',
-                    desc: answers.pms === 'in-house'
-                      ? 'Direct API integration for deep, bi-directional sync with your custom PMS.'
-                      : 'Lightweight Alias integration via @casapay.me logic—live in hours, not weeks.',
-                    icon: Zap,
-                    color: 'text-slate-400'
-                  },
-                ].map((feature, i) => (
-                  <div key={i} className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-white/20 transition-all hover:-translate-y-1 group">
-                     <div className={`p-3 bg-white/5 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform ${feature.color}`}>
-                        <feature.icon size={24} />
-                     </div>
-                     <h4 className="text-lg font-bold text-white mb-2">{feature.title}</h4>
-                     <p className="text-sm text-slate-400 leading-relaxed font-medium">{feature.desc}</p>
+            {/* What's included */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+              {tier.features.map((feature, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all hover:-translate-y-1 group">
+                  <div className={`p-3 bg-white/5 rounded-2xl w-fit mb-4 group-hover:scale-110 transition-transform ${PILLAR_COLORS[primary].text}`}>
+                    {i === 0 ? <Zap size={24} /> : i === 1 ? <ShieldCheck size={24} /> : i === 2 ? <CreditCard size={24} /> : <BarChart3 size={24} />}
                   </div>
-                ))}
-             </div>
+                  <p className="text-sm text-slate-200 leading-relaxed font-medium">{feature}</p>
+                </div>
+              ))}
+            </div>
 
-             <button className="px-8 py-4 bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-[0.15em] hover:bg-emerald-400 transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] hover:shadow-emerald-500/50">
-                Start Pilot Deployment
-             </button>
+            {/* Savings calculation */}
+            <div className="w-full max-w-2xl glass-card p-6 rounded-2xl border border-white/10 bg-white/5">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Cost Comparison</h3>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 text-center">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Current (multi-vendor)</p>
+                  <p className="text-xl font-black text-slate-300">€{currentMultiVendorCost.toLocaleString()}/mo</p>
+                </div>
+                <ArrowRight className="text-emerald-500 shrink-0" size={20} />
+                <div className="flex-1 text-center">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">CasaPay {tier.name}</p>
+                  <p className="text-xl font-black text-emerald-400">€{casapayCost.toLocaleString()}/mo</p>
+                </div>
+              </div>
+              {monthlySaving > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/5 text-center">
+                  <p className="text-sm text-emerald-400 font-bold">You save €{monthlySaving.toLocaleString()}/month (€{(monthlySaving * 12).toLocaleString()}/year)</p>
+                </div>
+              )}
+              {depositCapital > 0 && (
+                <div className="mt-3 text-center">
+                  <p className="text-xs text-slate-400">+ €{depositCapital.toLocaleString()} in deposit capital released</p>
+                </div>
+              )}
+            </div>
+
+            {/* CTA */}
+            <button className="px-8 py-4 bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-[0.15em] hover:bg-emerald-400 transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] hover:shadow-emerald-500/50">
+              {answers.portfolioSize === '500+' ? 'Get Proposal' : 'Start Pilot Deployment'}
+            </button>
           </div>
         );
+      }
+
       default:
         return null;
     }
@@ -603,38 +715,38 @@ export default function ProspectQualifier() {
         </div>
 
         <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/5">
-           <button
-             onClick={prevStep}
-             disabled={currentStep === 0}
-             className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-xs transition-all ${
-               currentStep === 0 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-white/5'
-             }`}
-           >
-              <ChevronLeft size={16} />
-              PREVIOUS STEP
-           </button>
+          <button
+            onClick={prevStep}
+            disabled={currentStep === 0}
+            className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-xs transition-all ${
+              currentStep === 0 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <ChevronLeft size={16} />
+            PREVIOUS STEP
+          </button>
 
-           <div className="flex gap-2">
-              {STEPS.map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${currentStep === i ? 'bg-slate-400 w-4' : 'bg-white/10'}`}
-                />
-              ))}
-           </div>
+          <div className="flex gap-2">
+            {STEPS.map((_, i) => (
+              <div
+                key={i}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${currentStep === i ? 'bg-slate-400 w-4' : 'bg-white/10'}`}
+              />
+            ))}
+          </div>
 
-           <button
-             onClick={nextStep}
-             disabled={currentStep === STEPS.length - 1}
-             className={`flex items-center gap-2 px-8 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${
-               currentStep === STEPS.length - 1
-                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                 : 'bg-slate-200 text-slate-950 hover:bg-white shadow-lg shadow-white/10'
-             }`}
-           >
-              {currentStep === STEPS.length - 1 ? 'End of Deck' : 'NEXT STEP'}
-              <ChevronRight size={16} />
-           </button>
+          <button
+            onClick={nextStep}
+            disabled={currentStep === STEPS.length - 1}
+            className={`flex items-center gap-2 px-8 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${
+              currentStep === STEPS.length - 1
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                : 'bg-slate-200 text-slate-950 hover:bg-white shadow-lg shadow-white/10'
+            }`}
+          >
+            {currentStep === STEPS.length - 1 ? 'End of Deck' : 'NEXT STEP'}
+            <ChevronRight size={16} />
+          </button>
         </div>
       </main>
     </div>
