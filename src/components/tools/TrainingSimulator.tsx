@@ -660,6 +660,7 @@ export default function TrainingSimulator() {
   const [liveTranscript, setLiveTranscript] = useState<TranscriptLine[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<UserName | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserName | null>(() => {
     if (typeof window === 'undefined') return null;
     const stored = localStorage.getItem('cp-training-user');
@@ -965,14 +966,45 @@ TRAINING MODE — COACHING RULES:
           </button>
         </div>
 
-        {sessions.length === 0 ? (
+        {/* User filter */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setHistoryFilter(null)}
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+              historyFilter === null
+                ? 'bg-white/10 text-white border border-white/20'
+                : 'bg-white/[0.02] text-slate-500 border border-white/5 hover:text-slate-300'
+            }`}
+          >
+            All
+          </button>
+          {USERS.map((name) => (
+            <button
+              key={name}
+              onClick={() => setHistoryFilter(historyFilter === name ? null : name)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                historyFilter === name
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-white/[0.02] text-slate-500 border border-white/5 hover:text-slate-300'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+
+        {(() => {
+          const filtered = historyFilter
+            ? sessions.filter((s) => s.userName === historyFilter)
+            : sessions;
+          return filtered.length === 0 ? (
           <div className="text-center py-20">
             <History size={32} className="text-slate-700 mx-auto mb-3" />
             <p className="text-sm text-slate-600">No sessions yet. Start practicing!</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {sessions.map((s) => {
+            {filtered.map((s) => {
               const persona = PERSONAS.find((p) => p.id === s.persona)!;
               const stage = STAGES.find((st) => st.id === s.stage)!;
               const roleLabel = s.role ? (ROLES[s.persona]?.[s.role]?.title || s.role) : '';
@@ -1039,7 +1071,8 @@ TRAINING MODE — COACHING RULES:
               );
             })}
           </div>
-        )}
+        );
+        })()}
       </div>
     );
   }
