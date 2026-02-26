@@ -10,6 +10,7 @@ type PersonaId = 'pbsa' | 'hmo' | 'btr' | 'coliving';
 type RoleId = 'operational' | 'strategic';
 type StageId = 'cold-intro' | 'discovery' | 'demo-pitch' | 'objection-handling' | 'offer-close';
 type CallMode = 'training' | 'exam';
+type PainPillarId = 'occupancy' | 'payment-ops' | 'cash-flow';
 type View = 'setup' | 'call' | 'scorecard' | 'history';
 
 interface Role {
@@ -56,6 +57,7 @@ interface Session {
   role: RoleId;
   stage: StageId;
   mode: CallMode;
+  painPillar?: PainPillarId;
   date: string;
   duration: number;
   scores: ScoreEntry[];
@@ -234,6 +236,27 @@ function getFirstMessage(persona: Persona, role: Role, stage: StageId, mode: Cal
   }
   return inCharacterMsg;
 }
+
+const PAIN_PILLARS: { id: PainPillarId; label: string; root: string; segments: string }[] = [
+  {
+    id: 'occupancy',
+    label: 'Occupancy',
+    root: 'Deposit/onboarding friction → empty units',
+    segments: 'PBSA, Co-Living, BTR',
+  },
+  {
+    id: 'payment-ops',
+    label: 'Payment Ops',
+    root: 'Manual collection, multi-vendor complexity, compliance',
+    segments: 'HMO, PBSA, Property Managers',
+  },
+  {
+    id: 'cash-flow',
+    label: 'Cash Flow',
+    root: 'Must pay investors regardless of tenant timing',
+    segments: 'HMO (leaseholders), BTR (funds), PBSA',
+  },
+];
 
 const STAGES: Stage[] = [
   { id: 'cold-intro', name: 'Cold Intro', duration: '~2 min', description: 'Hook referencing segment pain + Renters Rights Act. Get 30 seconds, then a meeting.' },
@@ -713,6 +736,7 @@ export default function TrainingSimulator() {
   const [selectedRole, setSelectedRole] = useState<RoleId>('operational');
   const [selectedStage, setSelectedStage] = useState<StageId | null>(null);
   const [callMode, setCallMode] = useState<CallMode>('training');
+  const [selectedPainPillar, setSelectedPainPillar] = useState<PainPillarId | null>(null);
   const [callActive, setCallActive] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
   const [connecting, setConnecting] = useState(false);
@@ -741,12 +765,14 @@ export default function TrainingSimulator() {
   const ringToneRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const callModeRef = useRef<CallMode>('training');
   const selectedUserRef = useRef<UserName | null>(null);
+  const selectedPainPillarRef = useRef<PainPillarId | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { selectedPersonaRef.current = selectedPersona; }, [selectedPersona]);
   useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
   useEffect(() => { selectedStageRef.current = selectedStage; }, [selectedStage]);
   useEffect(() => { callModeRef.current = callMode; }, [callMode]);
+  useEffect(() => { selectedPainPillarRef.current = selectedPainPillar; }, [selectedPainPillar]);
   useEffect(() => {
     selectedUserRef.current = selectedUser;
     if (selectedUser) localStorage.setItem('cp-training-user', selectedUser);
@@ -837,6 +863,7 @@ export default function TrainingSimulator() {
       role: selectedRoleRef.current,
       stage: selectedStageRef.current!,
       mode: callModeRef.current,
+      painPillar: selectedPainPillarRef.current ?? undefined,
       date: new Date().toISOString(),
       duration: callSecondsRef.current,
       scores,
@@ -875,6 +902,12 @@ export default function TrainingSimulator() {
     transcriptRef.current = [];
     finishingRef.current = false;
 
+    // Resolve pain pillar — random in exam mode, selected in training mode
+    const painPillar =
+      callMode === 'exam'
+        ? PAIN_PILLARS[Math.floor(Math.random() * PAIN_PILLARS.length)]
+        : PAIN_PILLARS.find((p) => p.id === selectedPainPillarRef.current)!;
+
     // Build context override: base prospect role + stage context + role overlay + persona description
     const basePrompt = callMode === 'exam'
       ? `You are playing the role of a property industry prospect receiving a sales call from a CasaPay sales rep. You are NOT the salesperson — you are the prospect being pitched to. Stay in character as ${persona.characterName}, a ${role.title} in the ${persona.segment} sector. Respond naturally as this person would on a real phone call. Never break character. Never help the rep or coach them. Make them earn every step.`
@@ -895,6 +928,7 @@ TRAINING MODE — COACHING RULES:
       STAGE_CONTEXT[selectedStage],
       ROLE_CONTEXT[selectedRole],
       `Your persona: ${personaDesc}`,
+      ...(painPillar ? [`PAIN POINT FOCUS: The rep is practising the "${painPillar.label}" pillar today. Steer your responses, objections, and conversation naturally toward this pain area. Root problem: ${painPillar.root}. Segment context: ${painPillar.segments}.`] : []),
     ].join('\n\n');
 
     try {
@@ -973,7 +1007,7 @@ TRAINING MODE — COACHING RULES:
       setError(err.message || 'Failed to connect');
       setView('setup');
     }
-  }, [selectedPersona, selectedRole, selectedStage, finishCall]);
+  }, [selectedPersona, selectedRole, selectedStage, callMode, finishCall]);
 
   const endCall = useCallback(() => {
     finishCall();
@@ -1431,7 +1465,7 @@ TRAINING MODE — COACHING RULES:
         </div>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => setCallMode('training')}
+            onClick={() => { setCallMode('training'); setSelectedPainPillar(null); }}
             className={`text-left p-4 rounded-xl border transition-all duration-200 ${
               callMode === 'training'
                 ? 'bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500/20'
@@ -1447,7 +1481,7 @@ TRAINING MODE — COACHING RULES:
             <p className="text-[10px] text-slate-500 leading-relaxed">Guided script with role-aware talk tracks and tips during the call</p>
           </button>
           <button
-            onClick={() => setCallMode('exam')}
+            onClick={() => { setCallMode('exam'); setSelectedPainPillar(null); }}
             className={`text-left p-4 rounded-xl border transition-all duration-200 ${
               callMode === 'exam'
                 ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
@@ -1465,11 +1499,44 @@ TRAINING MODE — COACHING RULES:
         </div>
       </div>
 
-      {/* Step 5: Stage */}
+      {/* Step 5: Pain Point Focus */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
             <span className="text-[10px] font-black text-emerald-400">5</span>
+          </div>
+          <span className="text-xs font-bold text-white">Pain Point Focus</span>
+        </div>
+        {callMode === 'training' ? (
+          <div className="grid grid-cols-3 gap-3">
+            {PAIN_PILLARS.map((pillar) => (
+              <button
+                key={pillar.id}
+                onClick={() => setSelectedPainPillar(pillar.id)}
+                className={`p-4 rounded-xl border text-left transition-all duration-200 ${
+                  selectedPainPillar === pillar.id
+                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                    : 'bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.04] hover:border-white/20'
+                }`}
+              >
+                <div className="text-sm font-bold mb-1">{pillar.label}</div>
+                <div className="text-xs text-slate-500">{pillar.root}</div>
+                <div className="text-xs text-slate-600 mt-1">{pillar.segments}</div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 text-slate-500 text-sm">
+            🎲 Pain pillar will be selected randomly at call start
+          </div>
+        )}
+      </div>
+
+      {/* Step 6: Stage */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+            <span className="text-[10px] font-black text-emerald-400">6</span>
           </div>
           <span className="text-xs font-bold text-white">Select Sales Stage</span>
         </div>
@@ -1483,9 +1550,9 @@ TRAINING MODE — COACHING RULES:
       <div className="pt-2">
         <button
           onClick={startCall}
-          disabled={!selectedUser || !selectedPersona || !selectedStage}
+          disabled={!selectedUser || !selectedPersona || !selectedStage || (callMode === 'training' && !selectedPainPillar)}
           className={`w-full py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-3 ${
-            selectedUser && selectedPersona && selectedStage
+            selectedUser && selectedPersona && selectedStage && (callMode !== 'training' || selectedPainPillar)
               ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 cursor-pointer'
               : 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
           }`}
@@ -1493,8 +1560,8 @@ TRAINING MODE — COACHING RULES:
           <Phone size={18} />
           Start Practice Call
         </button>
-        {(!selectedUser || !selectedPersona || !selectedStage) && (
-          <p className="text-[10px] text-slate-600 text-center mt-2">Select your name, a segment, role, and stage to begin</p>
+        {(!selectedUser || !selectedPersona || !selectedStage || (callMode === 'training' && !selectedPainPillar)) && (
+          <p className="text-[10px] text-slate-600 text-center mt-2">Select your name, a segment, role, pain pillar, and stage to begin</p>
         )}
       </div>
     </div>
